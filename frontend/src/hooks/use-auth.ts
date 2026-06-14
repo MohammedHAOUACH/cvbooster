@@ -12,6 +12,8 @@ interface User {
   provider?: string;
 }
 
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
+
 export function useAuth() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -20,6 +22,18 @@ export function useAuth() {
   const supabase = createClient();
 
   useEffect(() => {
+    if (SKIP_AUTH) {
+      setUser({
+        id: "demo-user",
+        email: "demo@cvbooster.local",
+        full_name: "Demo User",
+        avatar_url: undefined,
+        provider: "demo",
+      });
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -55,10 +69,10 @@ export function useAuth() {
   }, [router, supabase]);
 
   const signIn = useCallback(
-    (provider: "google" | "facebook" | "tiktok") => {
+    (provider: "google" | "facebook") => {
       supabase.auth
         .signInWithOAuth({
-          provider: provider as "google" | "facebook" | "github" | "apple" | "discord" | "figma" | "github" | "gitlab" | "google" | "twitter" | "twitch" | "workos",
+          provider: provider as any,
           options: {
             redirectTo:
               process.env.NEXT_PUBLIC_CALLBACK_URL ||
@@ -71,7 +85,10 @@ export function useAuth() {
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (!SKIP_AUTH) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
     router.push("/login");
   }, [supabase, router]);
 
@@ -80,9 +97,14 @@ export function useAuth() {
 
 export function useAuthToken(): string | null {
   const [token, setToken] = useState<string | null>(null);
-  const supabase = createClient();
 
   useEffect(() => {
+    if (SKIP_AUTH) {
+      setToken("demo-token");
+      return;
+    }
+
+    const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setToken(session?.access_token || null);
     });
@@ -94,7 +116,7 @@ export function useAuthToken(): string | null {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   return token;
 }

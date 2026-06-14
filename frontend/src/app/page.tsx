@@ -11,7 +11,7 @@ export default function HomePage() {
           tailored to the position — in seconds.
         </p>
         <div className="flex gap-4 justify-center">
-          <a href="/login" className="btn btn-primary px-8 py-3 text-base">
+          <a href="/create" className="btn btn-primary px-8 py-3 text-base">
             Get Started Free
           </a>
           <a href="#features" className="btn btn-outline px-8 py-3 text-base">

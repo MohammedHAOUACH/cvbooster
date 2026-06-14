@@ -16,6 +16,7 @@ class Settings:
         self.app_env: str = os.getenv("APP_ENV", "development")
         self.cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:80")
         self.debug: bool = os.getenv("DEBUG", "false").lower() == "true"
+        self.skip_auth: bool = os.getenv("SKIP_AUTH", "false").lower() == "true"
 
 
 @lru_cache()

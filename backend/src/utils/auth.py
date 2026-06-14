@@ -5,6 +5,9 @@ Verifies Supabase JWT tokens and extracts user_id.
 from fastapi import HTTPException, Request
 from typing import Optional
 import jwt
+import uuid
+
+from ..config import get_settings
 
 
 def verify_supabase_jwt(token: str) -> dict:
@@ -32,14 +35,19 @@ async def get_current_user_id(request: Request) -> str:
     """
     Dependency: Extract and verify user_id from the Authorization header.
 
-    Expected header: Authorization: Bearer <supabase_jwt_token>
+    When SKIP_AUTH=true, returns a demo user_id without checking the token.
     """
+    settings = get_settings()
+
+    if settings.skip_auth:
+       return "579fce1e-1604-4b00-b692-1f3b5ce43368"
+
     auth_header = request.headers.get("authorization", "")
 
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
 
-    token = auth_header[7:]  # Strip "Bearer "
+    token = auth_header[7:]
     payload = verify_supabase_jwt(token)
 
     user_id = payload.get("sub")
