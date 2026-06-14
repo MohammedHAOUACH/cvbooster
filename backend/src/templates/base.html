@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* Base ATS-friendly styles shared by all templates */
+        @page {
+            size: A4;
+            margin: 18mm 15mm 18mm 15mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #333;
+        }
+        .header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #333;
+        }
+        .header h1 {
+            font-size: 22pt;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .header .subtitle {
+            font-size: 11pt;
+            color: #666;
+        }
+        .contact-info {
+            font-size: 9pt;
+            color: #555;
+            margin-top: 4px;
+        }
+        .contact-info span {
+            margin-right: 12px;
+        }
+        .section {
+            margin-bottom: 14px;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+        .entry {
+            margin-bottom: 10px;
+        }
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .entry-title {
+            font-weight: 700;
+            font-size: 10.5pt;
+        }
+        .entry-subtitle {
+            font-style: italic;
+            color: #666;
+        }
+        .entry-date {
+            color: #888;
+            font-size: 9pt;
+            white-space: nowrap;
+        }
+        .entry-details {
+            margin-top: 3px;
+            padding-left: 0;
+        }
+        .entry-details li {
+            margin-bottom: 2px;
+            font-size: 9.5pt;
+        }
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .skill-tag {
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>

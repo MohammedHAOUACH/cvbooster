@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 18mm 15mm 18mm 15mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.5; color: #333; }
+        .header { background: #2563eb; color: white; margin: -18px -15mm 20px -15mm; padding: 20px 20mm; }
+        .header h1 { font-size: 24pt; font-weight: 700; }
+        .header .subtitle { font-size: 12pt; opacity: 0.9; margin-top: 2px; }
+        .contact-info { margin-top: 8px; font-size: 9pt; opacity: 0.85; }
+        .contact-info span { margin-right: 14px; }
+        .section { margin-bottom: 14px; }
+        .section-title { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 4px; margin-bottom: 8px; }
+        .entry { margin-bottom: 10px; }
+        .entry-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .entry-title { font-weight: 700; font-size: 10.5pt; }
+        .entry-subtitle { color: #2563eb; font-weight: 500; }
+        .entry-date { color: #888; font-size: 9pt; white-space: nowrap; }
+        .entry-details li { margin-bottom: 2px; font-size: 9.5pt; }
+        .skills-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .skill-tag { background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 9pt; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ cv.basics.name if cv.basics.name else 'Your Name' }}</h1>
+        {% if cv.basics.label %}<div class="subtitle">{{ cv.basics.label }}</div>{% endif %}
+        <div class="contact-info">
+            {% if cv.basics.email %}<span>{{ cv.basics.email }}</span>{% endif %}
+            {% if cv.basics.phone %}<span>{{ cv.basics.phone }}</span>{% endif %}
+            {% if cv.basics.url %}<span>{{ cv.basics.url }}</span>{% endif %}
+            {% if cv.basics.location and cv.basics.location.name %}<span>{{ cv.basics.location.name }}</span>{% endif %}
+        </div>
+    </div>
+    {% if cv.basics.summary %}
+    <div class="section">
+        <div class="section-title">Professional Summary</div>
+        <p>{{ cv.basics.summary }}</p>
+    </div>{% endif %}
+    {% if cv.work %}
+    <div class="section">
+        <div class="section-title">Work Experience</div>
+        {% for job in cv.work %}
+        <div class="entry">
+            <div class="entry-header">
+                <div><span class="entry-title">{{ job.position }}</span>{% if job.company %} — <span class="entry-subtitle">{{ job.company }}</span>{% endif %}</div>
+                <span class="entry-date">{% if job.startDate %}{{ job.startDate[:4] }}{% endif %}{% if job.startDate and job.endDate %} – {% endif %}{% if job.endDate %}{{ job.endDate[:4] if job.endDate != 'Present' else 'Present' }}{% endif %}</span>
+            </div>
+            {% if job.highlights %}<ul class="entry-details">{% for highlight in job.highlights %}<li>{{ highlight }}</li>{% endfor %}</ul>{% endif %}
+        </div>{% endfor %}
+    </div>{% endif %}
+    {% if cv.education %}
+    <div class="section"><div class="section-title">Education</div>
+        {% for edu in cv.education %}<div class="entry"><div class="entry-header"><div><span class="entry-title">{{ edu.institution }}</span>{% if edu.area %} — <span class="entry-subtitle">{{ edu.area }}</span>{% endif %}</div><span class="entry-date">{% if edu.startDate %}{{ edu.startDate[:4] }}{% endif %}{% if edu.startDate and edu.endDate %} – {% endif %}{% if edu.endDate %}{{ edu.endDate[:4] }}{% endif %}</span></div>{% if edu.studyType %}<p style="font-size:9pt;color:#666;">{{ edu.studyType }}</p>{% endif %}</div>{% endfor %}
+    </div>{% endif %}
+    {% if cv.skills %}
+    <div class="section"><div class="section-title">Skills</div>
+        {% for skill in cv.skills %}<div class="entry"><span class="entry-title">{{ skill.name }}</span>{% if skill.keywords %}<div class="skills-list">{% for kw in skill.keywords %}<span class="skill-tag">{{ kw }}</span>{% endfor %}</div>{% endif %}</div>{% endfor %}
+    </div>{% endif %}
+    {% if cv.projects %}
+    <div class="section"><div class="section-title">Projects</div>
+        {% for project in cv.projects %}<div class="entry"><div class="entry-header"><span class="entry-title">{{ project.name }}</span></div>{% if project.description %}<p>{{ project.description }}</p>{% endif %}{% if project.keywords %}<div class="skills-list" style="margin-top:4px;">{% for kw in project.keywords %}<span class="skill-tag">{{ kw }}</span>{% endfor %}</div>{% endif %}</div>{% endfor %}
+    </div>{% endif %}
+    {% if cv.certificates %}
+    <div class="section"><div class="section-title">Certifications</div>
+        {% for cert in cv.certificates %}<div class="entry"><div class="entry-header"><span class="entry-title">{{ cert.name }}</span>{% if cert.issuer %}<span class="entry-subtitle">{{ cert.issuer }}</span>{% endif %}</div></div>{% endfor %}
+    </div>{% endif %}
+</body>
+</html>
