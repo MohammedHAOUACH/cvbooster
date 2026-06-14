@@ -35,34 +35,34 @@ api.interceptors.response.use(
 
 export const endpoints = {
   auth: {
-    session: "/api/auth/session",
+    session: "/auth/session",
     profile: {
-      get: "/api/auth/profile",
-      update: "/api/auth/profile",
+      get: "/auth/profile",
+      update: "/auth/profile",
     },
   },
   upload: {
-    cv: "/api/upload/cv",
-    cvs: "/api/upload/cvs",
-    get: (id: string) => `/api/upload/cv/${id}`,
-    delete: (id: string) => `/api/upload/cv/${id}`,
+    cv: "/upload/cv",
+    cvs: "/upload/cvs",
+    get: (id: string) => `/upload/cv/${id}`,
+    delete: (id: string) => `/upload/cv/${id}`,
   },
   jobs: {
-    scrape: "/api/jobs/scrape",
-    paste: "/api/jobs/paste",
-    list: "/api/jobs",
-    get: (id: string) => `/api/jobs/${id}`,
-    delete: (id: string) => `/api/jobs/${id}`,
+    scrape: "/jobs/scrape",
+    paste: "/jobs/paste",
+    list: "/jobs",
+    get: (id: string) => `/jobs/${id}`,
+    delete: (id: string) => `/jobs/${id}`,
   },
   cv: {
-    generate: "/api/cv/generate",
-    list: "/api/cv",
-    get: (id: string) => `/api/cv/${id}`,
-    download: (id: string) => `/api/cv/${id}/download`,
-    retail: (id: string) => `/api/cv/${id}/retail`,
+    generate: "/cv/generate",
+    list: "/cv",
+    get: (id: string) => `/cv/${id}`,
+    download: (id: string) => `/cv/${id}/download`,
+    retail: (id: string) => `/cv/${id}/retail`,
   },
   templates: {
-    list: "/api/templates",
-    get: (name: string) => `/api/templates/${name}`,
+    list: "/templates",
+    get: (name: string) => `/templates/${name}`,
   },
 };
