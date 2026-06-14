@@ -60,7 +60,9 @@ export function useAuth() {
         .signInWithOAuth({
           provider: provider as "google" | "facebook" | "github" | "apple" | "discord" | "figma" | "github" | "gitlab" | "google" | "twitter" | "twitch" | "workos",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo:
+              process.env.NEXT_PUBLIC_CALLBACK_URL ||
+              `${window.location.origin}/auth/callback`,
           },
         })
         .catch((err) => setError(err.message));

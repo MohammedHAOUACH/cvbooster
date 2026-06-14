@@ -17,10 +17,12 @@ services:
         NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
         NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
         NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_CALLBACK_URL: http://localhost/auth/callback
     environment:
       NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_CALLBACK_URL: http://localhost/auth/callback
     ports:
       - "3000:3000"
     restart: unless-stopped
