@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useDropzone } from "react-dropzone";
 import { api, endpoints } from "@/lib/api-client";
 import { useCVStore } from "@/store/cv-store";
 import type { Template, OriginalCV, JobPosting } from "@/store/cv-store";
@@ -22,6 +21,8 @@ const TEMPLATE_ICONS: Record<string, string> = {
 
 export default function CreatePage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const step = useCVStore((s) => s.step);
   const setStep = useCVStore((s) => s.setStep);
   const uploadedCV = useCVStore((s) => s.uploadedCV);
@@ -39,12 +40,12 @@ export default function CreatePage() {
   const generating = useCVStore((s) => s.generating);
   const setGenerating = useCVStore((s) => s.setGenerating);
 
-  // Job input state
   const [jobInput, setJobInput] = useState("");
   const [jobType, setJobType] = useState<"url" | "text">("url");
   const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Fetch templates on mount
   useEffect(() => {
     async function loadTemplates() {
       try {
@@ -55,16 +56,14 @@ export default function CreatePage() {
           setSelectedTemplate(tpls[0].name);
         }
       } catch {
-        // Templates are optional — use defaults
+        // use defaults
       }
     }
     loadTemplates();
   }, [setTemplates, setSelectedTemplate, selectedTemplate]);
 
-  // Upload handler
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
+  const handleFile = useCallback(
+    async (file: File) => {
       if (!file || file.type !== "application/pdf") {
         setError("Please upload a PDF file");
         return;
@@ -75,6 +74,7 @@ export default function CreatePage() {
       }
 
       setError(null);
+      setFileName(file.name);
       setUploadLoading(true);
 
       try {
@@ -83,13 +83,15 @@ export default function CreatePage() {
 
         const res = await api.post(endpoints.upload.cv, formData, {
           headers: { "Content-Type": "multipart/form-data" },
+          timeout: 120000,
         });
 
         const cv: OriginalCV = res.data.cv;
         setUploadedCV(cv);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Upload failed";
-        setError(message);
+        setError("Upload failed: " + message);
+        setFileName("");
       } finally {
         setUploadLoading(false);
       }
@@ -97,13 +99,23 @@ export default function CreatePage() {
     [setUploadedCV, setUploadLoading]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { "application/pdf": [".pdf"] },
-    maxFiles: 1,
-  });
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
 
-  // Job posting handler
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const onDragLeave = () => setIsDragging(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
   const handleJobSubmit = async () => {
     if (!jobInput.trim()) {
       setError("Please enter a job URL or paste the job description");
@@ -119,7 +131,6 @@ export default function CreatePage() {
       } else {
         res = await api.post(endpoints.jobs.paste, { raw_content: jobInput });
       }
-
       const job: JobPosting = res.data.job;
       setJobPosting(job);
     } catch (err: unknown) {
@@ -130,7 +141,6 @@ export default function CreatePage() {
     }
   };
 
-  // Generate handler
   const handleGenerate = async () => {
     if (!uploadedCV || !jobPosting) {
       setError("Please complete all steps first");
@@ -144,14 +154,14 @@ export default function CreatePage() {
         original_cv_id: uploadedCV.id,
         job_posting_id: jobPosting.id,
         template_name: selectedTemplate,
-      });
+      }, { timeout: 300000 });
 
       const generatedCV = res.data.generated_cv;
       const score = generatedCV.ats_score || 85;
       router.push(`/preview?id=${generatedCV.id}&score=${score}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Generation failed";
-      setError(message);
+      setError("Generation failed: " + message);
       setGenerating(false);
     }
   };
@@ -166,7 +176,6 @@ export default function CreatePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Step Indicator */}
       <div className="flex items-center justify-between mb-8">
         {steps.map((s, i) => (
           <div key={s.key} className="flex items-center">
@@ -201,7 +210,7 @@ export default function CreatePage() {
         </div>
       )}
 
-      {/* STEP 1: Upload CV */}
+      {/* STEP 1 */}
       {step === "upload" && (
         <div className="card p-8">
           <h2 className="text-xl font-semibold mb-4">Upload Your CV</h2>
@@ -211,14 +220,23 @@ export default function CreatePage() {
           </p>
 
           <div
-            {...getRootProps()}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition ${
-              isDragActive
+              isDragging
                 ? "border-primary-400 bg-primary-50"
                 : "border-gray-300 hover:border-primary-400"
             }`}
           >
-            <input {...getInputProps()} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={onFileChange}
+              className="hidden"
+            />
             <div className="text-4xl mb-4">
               {uploadLoading ? "⚙️" : uploadedCV ? "✅" : "📄"}
             </div>
@@ -236,12 +254,16 @@ export default function CreatePage() {
             ) : (
               <div>
                 <p className="font-medium">
-                  {isDragActive ? "Drop your CV here" : "Click to upload or drag and drop"}
+                  {isDragging ? "Drop your CV here" : "Click to upload or drag and drop"}
                 </p>
                 <p className="text-sm text-gray-500 mt-2">PDF files only, max 10MB</p>
               </div>
             )}
           </div>
+
+          {fileName && uploadLoading && (
+            <p className="text-sm text-gray-500 mt-2">Processing: {fileName}</p>
+          )}
 
           {uploadedCV && !uploadLoading && (
             <button
@@ -254,13 +276,12 @@ export default function CreatePage() {
         </div>
       )}
 
-      {/* STEP 2: Job Posting */}
+      {/* STEP 2 */}
       {step === "job" && (
         <div className="card p-8">
           <h2 className="text-xl font-semibold mb-4">Job Posting</h2>
           <p className="text-gray-600 mb-6">
-            Paste the job URL or description. We will identify key skills and
-            requirements to optimize your CV.
+            Paste the job URL or description below.
           </p>
 
           <div className="flex gap-2 mb-4">
@@ -308,20 +329,14 @@ export default function CreatePage() {
           {jobPosting && (
             <div>
               <div className="bg-green-50 text-green-700 p-3 rounded-lg mb-4">
-                ✓ Job analyzed! {jobPosting.title ? `"${jobPosting.title}"` : "Job posting"}
+                ✓ Job analyzed: {jobPosting.title || "Job posting"}
                 {jobPosting.company ? ` at ${jobPosting.company}` : ""}
               </div>
               <div className="flex justify-between">
-                <button
-                  onClick={() => setStep("upload")}
-                  className="btn btn-outline"
-                >
+                <button onClick={() => setStep("upload")} className="btn btn-outline">
                   ← Back
                 </button>
-                <button
-                  onClick={() => setStep("template")}
-                  className="btn btn-primary"
-                >
+                <button onClick={() => setStep("template")} className="btn btn-primary">
                   Continue →
                 </button>
               </div>
@@ -330,25 +345,24 @@ export default function CreatePage() {
         </div>
       )}
 
-      {/* STEP 3: Template */}
+      {/* STEP 3 */}
       {step === "template" && (
         <div className="card p-8">
           <h2 className="text-xl font-semibold mb-2">Choose a Template</h2>
           <p className="text-gray-600 mb-6">
-            Select the style for your ATS-optimized CV. All templates are
-            ATS-friendly.
+            Select the style for your ATS-optimized CV.
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {(templates.length > 0 ? templates : [
-              { name: "clean", display_name: "Clean", description: "Simple, elegant", category: "general" },
+              { name: "clean", display_name: "Clean", description: "Simple", category: "general" },
               { name: "modern", display_name: "Modern", description: "Color accents", category: "tech" },
-              { name: "minimal", display_name: "Minimal", description: "Typography only", category: "creative" },
+              { name: "minimal", display_name: "Minimal", description: "Clean typography", category: "creative" },
               { name: "corporate", display_name: "Corporate", description: "Professional", category: "corporate" },
-              { name: "tech", display_name: "Tech", description: "Developer focused", category: "tech" },
-              { name: "creative", display_name: "Creative", description: "Bold & vibrant", category: "creative" },
-              { name: "academic", display_name: "Academic", description: "Publications first", category: "academic" },
-              { name: "executive", display_name: "Executive", description: "Leadership focus", category: "executive" },
+              { name: "tech", display_name: "Tech", description: "Developer", category: "tech" },
+              { name: "creative", display_name: "Creative", description: "Bold", category: "creative" },
+              { name: "academic", display_name: "Academic", description: "Research", category: "academic" },
+              { name: "executive", display_name: "Executive", description: "Leadership", category: "executive" },
             ] as Template[]).map((t) => (
               <button
                 key={t.name}
@@ -359,68 +373,47 @@ export default function CreatePage() {
                     : "hover:border-primary-300"
                 }`}
               >
-                <div className="text-2xl mb-2">
-                  {TEMPLATE_ICONS[t.name] || "📄"}
-                </div>
-                <div className="font-medium text-sm">
-                  {t.display_name || t.name}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {t.description}
-                </div>
+                <div className="text-2xl mb-2">{TEMPLATE_ICONS[t.name] || "📄"}</div>
+                <div className="font-medium text-sm">{t.display_name || t.name}</div>
+                <div className="text-xs text-gray-500">{t.description}</div>
               </button>
             ))}
           </div>
 
           <div className="flex justify-between mt-6">
-            <button
-              onClick={() => setStep("job")}
-              className="btn btn-outline"
-            >
+            <button onClick={() => setStep("job")} className="btn btn-outline">
               ← Back
             </button>
-            <button
-              onClick={() => setStep("generate")}
-              className="btn btn-primary"
-            >
+            <button onClick={() => setStep("generate")} className="btn btn-primary">
               Continue →
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 4: Generate */}
+      {/* STEP 4 */}
       {step === "generate" && (
         <div className="card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">Ready to Generate</h2>
           <p className="text-gray-600 mb-6">
-            Your CV will be optimized for ATS compatibility with the{" "}
+            Your CV will be optimized with the{" "}
             <strong>{selectedTemplate}</strong> template.
           </p>
 
           <div className="bg-gray-50 rounded-lg p-4 mb-6 text-sm text-left max-w-md mx-auto space-y-2">
-            <div>
-              <strong>CV:</strong> {uploadedCV?.file_name || "Not uploaded"}
-            </div>
+            <div><strong>CV:</strong> {uploadedCV?.file_name || "Not uploaded"}</div>
             <div>
               <strong>Job:</strong>{" "}
               {jobPosting?.title
                 ? `"${jobPosting.title}" ${jobPosting.company ? `at ${jobPosting.company}` : ""}`
-                : jobType === "url"
-                ? `Scraped from URL`
-                : "Pasted text"}
+                : jobType === "url" ? "Scraped from URL" : "Pasted text"}
             </div>
-            <div>
-              <strong>Template:</strong> {selectedTemplate}
-            </div>
+            <div><strong>Template:</strong> {selectedTemplate}</div>
           </div>
 
           {!generating ? (
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => setStep("template")}
-                className="btn btn-outline"
-              >
+              <button onClick={() => setStep("template")} className="btn btn-outline">
                 ← Change Template
               </button>
               <button
@@ -433,13 +426,9 @@ export default function CreatePage() {
             </div>
           ) : (
             <div>
-              <div className="animate-spin text-4xl mb-4">⚙️</div>
-              <p className="text-lg font-medium">
-                Generating your ATS-optimized CV...
-              </p>
-              <p className="text-gray-500 text-sm mt-2">
-                This usually takes 15-30 seconds
-              </p>
+              <div className="text-4xl mb-4">⚙️</div>
+              <p className="text-lg font-medium">Generating your ATS-optimized CV...</p>
+              <p className="text-gray-500 text-sm mt-2">This may take up to 2 minutes</p>
             </div>
           )}
         </div>
