@@ -28,8 +28,8 @@ def parse_cv_pdf(pdf_content: bytes) -> Dict[str, Any]:
         parser = LiteParse()
         result = parser.parse(tmp_path)
 
-        # LiteParse returns text content with layout info
-        raw_text = result.get("text", "")
+        # LiteParse v2 returns ParseResult object with .text attribute
+        raw_text = getattr(result, "text", "") or getattr(result, "markdown", "") or str(result)
 
         # Basic structuring of extracted text
         extracted = {

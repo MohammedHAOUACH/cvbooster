@@ -7,14 +7,20 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    volumes:
-      - ./backend:/app
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
     restart: unless-stopped

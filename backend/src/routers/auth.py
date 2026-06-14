@@ -1,12 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Request,  APIRouter, HTTPException, Depends
+
 from supabase import Client
 from ..database import get_supabase
 from ..models.user import UserProfile, UserUpdate
-from ..utils.auth import get_current_user_id, verify_supabase_jwt
+from ..utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-security = HTTPBearer()
 
 
 @router.get("/session")

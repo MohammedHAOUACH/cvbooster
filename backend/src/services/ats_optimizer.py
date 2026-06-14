@@ -111,7 +111,12 @@ def calculate_ats_score(
 def _flatten_cv_text(cv_data: Dict[str, Any]) -> str:
     """Flatten CV data into searchable text."""
     parts = []
-
+    
+    # Handle extracted CV data (from LiteParse) - check first
+    if "raw_text" in cv_data:
+        parts.append(cv_data["raw_text"])
+        return " ".join(parts)
+    
     # Handle JSON Resume format
     if isinstance(cv_data, dict):
         basics = cv_data.get("basics", {})
@@ -139,9 +144,5 @@ def _flatten_cv_text(cv_data: Dict[str, Any]) -> str:
             parts.append(project.get("description", ""))
             for kw in project.get("keywords", []):
                 parts.append(kw)
-
-    # Handle extracted CV data (from LiteParse)
-    elif "raw_text" in cv_data:
-        parts.append(cv_data["raw_text"])
 
     return " ".join(parts)
