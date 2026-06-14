@@ -3,6 +3,7 @@ PDF generation service using WeasyPrint + Jinja2.
 Converts optimized CV data (JSON Resume format) into styled PDFs.
 """
 import os
+import shutil
 import tempfile
 from typing import Any, Dict
 

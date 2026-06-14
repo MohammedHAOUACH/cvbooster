@@ -1,25 +1,21 @@
+import os
 from functools import lru_cache
-from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+
+# Load .env from project root (one level up from backend/)
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 
-class Settings(BaseSettings):
-    # Supabase
-    supabase_url: str = "https://siekxlkhsppcqwyoxrvn.supabase.co"
-    supabase_anon_key: str = ""
-    supabase_service_key: str = ""
-
-    # LLM (OpenRouter via litellm)
-    openrouter_api_key: str = ""
-
-    # App
-    app_name: str = "CVBooster"
-    app_env: str = "development"
-    cors_origins: str = "http://localhost:3000,http://localhost:80"
-    debug: bool = False
-
-    class Config:
-        env_file = "../.env"
-        env_file_encoding = "utf-8"
+class Settings:
+    def __init__(self):
+        self.supabase_url: str = os.getenv("SUPABASE_URL", "https://siekxlkhsppcqwyoxrvn.supabase.co")
+        self.supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
+        self.supabase_service_key: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+        self.openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+        self.app_name: str = os.getenv("APP_NAME", "CVBooster")
+        self.app_env: str = os.getenv("APP_ENV", "development")
+        self.cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:80")
+        self.debug: bool = os.getenv("DEBUG", "false").lower() == "true"
 
 
 @lru_cache()
