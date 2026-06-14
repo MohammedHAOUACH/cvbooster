@@ -72,7 +72,7 @@ def optimize_cv_for_job(
 
     try:
         response = completion(
-            model="openrouter/deepseek/deepseek-chat-v3.1:free",
+            model="openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -80,6 +80,11 @@ def optimize_cv_for_job(
             api_base="https://openrouter.ai/api/v1",
             api_key=api_key,
             temperature=0.3,
+            extra_body={
+                "provider": {
+                    "allow_fallbacks": True,
+                }
+            },
         )
 
         result_text = response.choices[0].message.content

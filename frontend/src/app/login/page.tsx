@@ -1,53 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
+  const { user, loading, error, signIn } = useAuth();
 
-  // If already logged in, redirect to dashboard
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.push("/dashboard");
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        router.push("/dashboard");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router, supabase]);
-
-  const handleLogin = async (provider: "google" | "facebook" | "tiktok") => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) {
-        setError(error.message);
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // If already logged in or auth checking, show spinner
+  if (loading || user) {
+    return (
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin text-3xl mb-4">⚙️</div>
+          <p className="text-gray-600">Connecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6">
@@ -65,8 +33,7 @@ export default function LoginPage() {
 
         <div className="space-y-3">
           <button
-            onClick={() => handleLogin("google")}
-            disabled={loading}
+            onClick={() => signIn("google")}
             className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -79,8 +46,7 @@ export default function LoginPage() {
           </button>
 
           <button
-            onClick={() => handleLogin("facebook")}
-            disabled={loading}
+            onClick={() => signIn("facebook")}
             className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
@@ -88,21 +54,10 @@ export default function LoginPage() {
             </svg>
             Continue with Facebook
           </button>
-
-          <button
-            onClick={() => handleLogin("tiktok")}
-            disabled={loading}
-            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-            </svg>
-            Continue with TikTok
-          </button>
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-6">
-          By signing in, you agree to our Terms of Service and Privacy Policy
+          Free to use — no credit card required
         </p>
       </div>
     </div>
