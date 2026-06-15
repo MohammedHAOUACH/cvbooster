@@ -5,7 +5,7 @@ Scrapes job URLs from LinkedIn, Indeed, Glassdoor, etc.
 from typing import Any, Dict
 
 
-def scrape_job_url(url: str) -> Dict[str, Any]:
+async def scrape_job_url(url: str) -> Dict[str, Any]:
     """
     Scrape a job posting URL and extract structured data.
 
@@ -16,34 +16,30 @@ def scrape_job_url(url: str) -> Dict[str, Any]:
         Dict with title, company, raw_content, parsed_data.
     """
     from crawl4ai import AsyncWebCrawler
-    import asyncio
 
-    async def _scrape():
-        async with AsyncWebCrawler() as crawler:
-            result = await crawler.arun(url=url)
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun(url=url)
 
-            if not result.success:
-                raise RuntimeError(f"Failed to scrape {url}: {result.error_message}")
+        if not result.success:
+            raise RuntimeError(f"Failed to scrape {url}: {result.error_message}")
 
-            # Get cleaned markdown text
-            raw_content = result.markdown or result.cleaned_html or ""
+        # Get cleaned markdown text
+        raw_content = result.markdown or result.cleaned_html or ""
 
-            # Try to extract title and company from the content
-            title = _extract_title(raw_content)
-            company = _extract_company(raw_content)
+        # Try to extract title and company from the content
+        title = _extract_title(raw_content)
+        company = _extract_company(raw_content)
 
-            return {
-                "title": title,
-                "company": company,
-                "raw_content": raw_content,
-                "parsed_data": {
-                    "skills": [],
-                    "requirements": [],
-                    "responsibilities": [],
-                },
-            }
-
-    return asyncio.run(_scrape())
+        return {
+            "title": title,
+            "company": company,
+            "raw_content": raw_content,
+            "parsed_data": {
+                "skills": [],
+                "requirements": [],
+                "responsibilities": [],
+            },
+        }
 
 
 def _extract_title(content: str) -> str:

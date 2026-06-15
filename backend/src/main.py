@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import get_settings
-from .routers import auth, upload, scraper, cv_engine, templates
+from .database import get_supabase
+from .routers import auth, upload, scraper, cv_engine, templates, files
 
 
 @asynccontextmanager
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(scraper.router)
     app.include_router(cv_engine.router)
     app.include_router(templates.router)
+    app.include_router(files.router)
 
     # Health check
     @app.get("/health")

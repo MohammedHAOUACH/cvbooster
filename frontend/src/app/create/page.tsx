@@ -158,7 +158,7 @@ export default function CreatePage() {
 
       const generatedCV = res.data.generated_cv;
       const score = generatedCV.ats_score || 85;
-      router.push(`/preview?id=${generatedCV.id}&score=${score}`);
+      router.push(`/preview/${generatedCV.id}?score=${score}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Generation failed";
       setError("Generation failed: " + message);

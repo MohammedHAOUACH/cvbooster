@@ -1,13 +1,18 @@
+import os
+import uuid
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi.responses import FileResponse
 from supabase import Client
 from ..database import get_supabase
 from ..utils.auth import get_current_user_id
 from ..services.pdf_parser import parse_cv_pdf
-from ..models.cv import OriginalCV
 from ..models.response import MessageResponse
-import uuid
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
+
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads")
+ORIGINAL_CVS_DIR = os.path.join(UPLOADS_DIR, "original-cvs")
+os.makedirs(ORIGINAL_CVS_DIR, exist_ok=True)
 
 
 @router.post("/cv")
@@ -15,7 +20,7 @@ async def upload_cv(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id)
 ):
-    """Upload a CV PDF file, parse it with LiteParse, and store in Supabase."""
+    """Upload a CV PDF file, parse it with LiteParse, and store locally + in Supabase."""
     if not file.content_type or file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
@@ -23,18 +28,11 @@ async def upload_cv(
     if len(content) > 10 * 1024 * 1024:  # 10MB
         raise HTTPException(status_code=400, detail="File size must be under 10MB")
 
-    supabase: Client = get_supabase()
-
-    # Upload to Supabase Storage
-    file_id = f"{user_id}/{uuid.uuid4().hex}_{file.filename}"
-    storage_result = supabase.storage.from_("original-cvs").upload(
-        file_id, content, file_options={"content-type": "application/pdf"}
-    )
-
-    if not storage_result or not hasattr(storage_result, 'path'):
-        raise HTTPException(status_code=500, detail="Failed to upload file")
-
-    file_url = supabase.storage.from_("original-cvs").get_public_url(file_id)
+    # Store file locally
+    file_id = f"{uuid.uuid4().hex}_{file.filename}"
+    file_path = os.path.join(ORIGINAL_CVS_DIR, file_id)
+    with open(file_path, "wb") as f:
+        f.write(content)
 
     # Parse the PDF with LiteParse
     try:
@@ -42,15 +40,16 @@ async def upload_cv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {str(e)}")
 
-    # Save to database
+    # Save metadata to database
     cv_data = {
         "user_id": user_id,
-        "file_url": file_url,
+        "file_url": f"/api/files/original-cvs/{file_id}",
         "file_name": file.filename,
         "file_size": len(content),
         "extracted_data": extracted_data,
     }
 
+    supabase: Client = get_supabase()
     result = supabase.table("original_cvs").insert(cv_data).execute()
 
     if not result.data:
@@ -107,7 +106,6 @@ async def delete_cv(
     """Delete an original CV."""
     supabase: Client = get_supabase()
 
-    # Get CV to verify ownership and get file info
     result = (
         supabase.table("original_cvs")
         .select("*")
@@ -119,7 +117,6 @@ async def delete_cv(
     if not result.data:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    # Delete from storage and database
     supabase.table("original_cvs").delete().eq("id", cv_id).execute()
 
     return MessageResponse(message="CV deleted successfully")

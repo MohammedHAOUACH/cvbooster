@@ -40,7 +40,7 @@ Please rewrite the resume to maximize ATS compatibility with this job.
 Return ONLY valid JSON in the JSON Resume format - no markdown, no explanation."""
 
 
-def optimize_cv_for_job(
+async def optimize_cv_for_job(
     original_cv_data: Dict[str, Any],
     job_posting_data: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -54,7 +54,7 @@ def optimize_cv_for_job(
     Returns:
         Optimized CV as JSON Resume format dict.
     """
-    from litellm import completion
+    from litellm import acompletion
     import os
 
     # Build prompts
@@ -63,31 +63,26 @@ def optimize_cv_for_job(
         job_posting_data=json.dumps(job_posting_data, indent=2),
     )
 
-    # Call LLM via litellm (configurable provider)
-    api_key = os.environ.get("OPENROUTER_API_KEY", "")
-
-    extra_headers = {}
-    if api_key:
-        extra_headers["Authorization"] = f"Bearer {api_key}"
+    # Use local llama.cpp server (OpenAI-compatible)
+    local_url = os.environ.get("LOCAL_LLM_URL", "http://localhost:1234")
+    local_model = os.environ.get("LOCAL_LLM_MODEL", "Qwen3.6-27B-UD-Q5_K_XL.gguf")
 
     try:
-        response = completion(
-            model="openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+        print(f"[LLM] Starting CV optimization with local model: {local_model}")
+        response = await acompletion(
+            model=f"openai/{local_model}",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
             ],
-            api_base="https://openrouter.ai/api/v1",
-            api_key=api_key,
+            api_base=f"{local_url}/v1",
+            api_key="sk-no-key-required",
             temperature=0.3,
-            extra_body={
-                "provider": {
-                    "allow_fallbacks": True,
-                }
-            },
+            timeout=600,
         )
 
         result_text = response.choices[0].message.content
+        print("[LLM] Response received, parsing JSON...")
 
         # Parse JSON from response
         cv_data = _parse_llm_json(result_text)
@@ -95,6 +90,7 @@ def optimize_cv_for_job(
         return cv_data
 
     except Exception as e:
+        print(f"[LLM] Error: {str(e)}")
         raise RuntimeError(f"LLM API call failed: {str(e)}")
 
 

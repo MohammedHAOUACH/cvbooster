@@ -1,3 +1,5 @@
+import os
+import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import FileResponse
 from supabase import Client
@@ -9,6 +11,10 @@ from ..services.ats_optimizer import calculate_ats_score
 from ..services.pdf_generator import generate_cv_pdf
 
 router = APIRouter(prefix="/api/cv", tags=["cv-generation"])
+
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads")
+GENERATED_CVS_DIR = os.path.join(UPLOADS_DIR, "generated-cvs")
+os.makedirs(GENERATED_CVS_DIR, exist_ok=True)
 
 
 @router.post("/generate")
@@ -45,7 +51,7 @@ async def generate_cv(
 
     # 3. Generate optimized CV content via LLM
     try:
-        optimized_cv = optimize_cv_for_job(
+        optimized_cv = await optimize_cv_for_job(
             original_cv_data=original_cv.get("extracted_data", {}),
             job_posting_data=job_posting,
         )
@@ -64,19 +70,17 @@ async def generate_cv(
         template_name=request.template_name,
     )
 
-    # 6. Upload PDF to Supabase Storage
-    import uuid
+    # 6. Store PDF locally
     generated_id = str(uuid.uuid4())
-    file_id = f"{user_id}/{generated_id}.pdf"
+    file_id = f"{generated_id}.pdf"
+    dest_path = os.path.join(GENERATED_CVS_DIR, file_id)
+    
+    # Move/copy the generated PDF to our storage
+    import shutil
+    if pdf_path != dest_path:
+        shutil.copy2(pdf_path, dest_path)
 
-    with open(pdf_path, "rb") as f:
-        pdf_content = f.read()
-
-    supabase.storage.from_("generated-cvs").upload(
-        file_id, pdf_content, file_options={"content-type": "application/pdf"}
-    )
-
-    file_url = supabase.storage.from_("generated-cvs").get_public_url(file_id)
+    file_url = f"/api/files/generated-cvs/{file_id}"
 
     # 7. Save to database
     gen_cv_data = {
@@ -194,17 +198,14 @@ async def regenerate_with_template(
         template_name=request.template_name,
     )
 
-    import uuid
-    file_id = f"{user_id}/{uuid.uuid4().hex}.pdf"
+    file_id = f"{uuid.uuid4().hex}.pdf"
+    dest_path = os.path.join(GENERATED_CVS_DIR, file_id)
+    
+    import shutil
+    if pdf_path != dest_path:
+        shutil.copy2(pdf_path, dest_path)
 
-    with open(pdf_path, "rb") as f:
-        pdf_content = f.read()
-
-    supabase.storage.from_("generated-cvs").upload(
-        file_id, pdf_content, file_options={"content-type": "application/pdf"}
-    )
-
-    new_url = supabase.storage.from_("generated-cvs").get_public_url(file_id)
+    new_url = f"/api/files/generated-cvs/{file_id}"
 
     # Update database
     updated = (

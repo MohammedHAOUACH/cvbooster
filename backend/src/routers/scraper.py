@@ -15,7 +15,7 @@ async def scrape_job(
 ):
     """Scrape a job posting URL using crawl4ai."""
     try:
-        scraped_data = scrape_job_url(request.source_url)
+        scraped_data = await scrape_job_url(request.source_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
