@@ -1,10 +1,14 @@
 """
 PDF parsing service using LiteParse.
-Extracts structured text from CV PDFs.
+Extracts structured text from CV PDFs and detects dominant style/format.
 """
 from typing import Any, Dict
 import tempfile
 import os
+
+TEMPLATE_STYLES = [
+    "clean", "modern", "minimal", "corporate", "tech", "creative", "academic", "executive",
+]
 
 
 def parse_cv_pdf(pdf_content: bytes) -> Dict[str, Any]:
@@ -36,6 +40,7 @@ def parse_cv_pdf(pdf_content: bytes) -> Dict[str, Any]:
             "raw_text": raw_text,
             "personal_info": _extract_personal_info(raw_text),
             "sections": _split_into_sections(raw_text),
+            "detected_style": _detect_cv_style(raw_text, pdf_content),
         }
 
         return extracted
@@ -123,3 +128,49 @@ def _split_into_sections(text: str) -> list[Dict[str, str]]:
         })
 
     return sections
+
+
+def _detect_cv_style(raw_text: str, pdf_content: bytes = b"") -> str:
+    """Detect dominant CV style/format based on parsed text and raw PDF hints."""
+    text = raw_text or ""
+    sections = _split_into_sections(text)
+    section_headers = [s.get("header", "").strip().lower() for s in sections]
+
+    # Academic/research cues
+    academic_cues = {"publications", "research", "certificates"}
+    if sum(1 for h in section_headers if h in academic_cues) >= 2:
+        return "academic"
+
+    # Executive/leadership cues
+    executive_cues = {"leadership", "management", "certifications", "awards", "honors"}
+    executive_score = sum(1 for h in section_headers if h in executive_cues)
+    leadership_score = sum(1 for line in text.splitlines() if any(word in line.lower() for word in ["director", "manager", "head of", "vp", "ceo", "cto"]))
+    if executive_score >= 2 or leadership_score >= 3:
+        return "executive"
+
+    # Tech cues
+    tech_cues = {"technologies", "tools", "projects", "frameworks"}
+    if sum(1 for h in section_headers if h in tech_cues) >= 1:
+        tech_words = ["python", "javascript", "typescript", "docker", "aws", "api", "rest", "react"]
+        if sum(1 for w in tech_words if w in text.lower()) >= 2:
+            return "tech"
+
+    # Creative cues
+    creative_cues = {"portfolio", "creative", "design", "media"}
+    if sum(1 for h in section_headers if h in creative_cues) >= 1:
+        return "creative"
+
+    # Corporate cues
+    corporate_cues = {"professional experience", "employment history", "qualifications"}
+    if any(h in corporate_cues for h in section_headers):
+        return "corporate"
+
+    # Minimal cues: fewer section headers, shorter text, simple structure
+    if len(sections) <= 3 and len(text.splitlines()) < 40:
+        return "minimal"
+
+    # Modern cues: explicit skills/tools/projects beyond basics
+    if len(sections) >= 4:
+        return "modern"
+
+    return "clean"

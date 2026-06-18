@@ -5,6 +5,13 @@ from ..utils.auth import get_current_user_id
 from ..services.job_scraper import scrape_job_url
 from ..models.job import JobPosting, ScrapeJobRequest, PasteJobRequest
 
+try:
+    from langdetect import detect
+    from langdetect.lang_detect_exception import LanguageDetectException
+    LANGDETECT_AVAILABLE = True
+except ImportError:
+    LANGDETECT_AVAILABLE = False
+
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 
@@ -27,6 +34,7 @@ async def scrape_job(
         "title": scraped_data.get("title"),
         "company": scraped_data.get("company"),
         "raw_content": scraped_data.get("raw_content", ""),
+        "detected_language": _detect_job_language(scraped_data.get("raw_content", "")),
         "parsed_data": scraped_data.get("parsed_data"),
     }
 
@@ -51,6 +59,7 @@ async def paste_job(
         "title": request.title,
         "company": request.company,
         "raw_content": request.raw_content,
+        "detected_language": _detect_job_language(request.raw_content or ""),
     }
 
     result = supabase.table("job_postings").insert(job_data).execute()
@@ -118,3 +127,24 @@ async def delete_job(
     )
 
     return {"message": "Job posting deleted successfully"}
+
+
+def _detect_job_language(raw_content: str) -> str:
+    """Detect the dominant language of a job posting, defaulting to English."""
+    text = raw_content.strip() if raw_content else ""
+    if not text:
+        return "en"
+
+    if LANGDETECT_AVAILABLE:
+        try:
+            return detect(text[:10000])
+        except (LanguageDetectException, Exception):
+            pass
+
+    # Fallback heuristic: common French characters/words
+    lower = text.lower()
+    fr_cues = ["é", "è", "ê", "à", "ù", "ç", "expérience", "compétences", "formation", "recherche"]
+    if any(cue in lower for cue in fr_cues):
+        return "fr"
+
+    return "en"

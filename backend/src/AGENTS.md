@@ -52,6 +52,10 @@ Implementation packages for CVBooster backend logic, APIs, models, templates, an
 - Services own external calls: database, storage, LLM, parsing, scraping
 - Models validate input/output shapes before services use them
 - Templates receive validated model fields and avoid complex layout
+- Job language is detected on scrape/paste and stored on job posting
+- Generated CV output language defaults to detected job language
+- Original CV style/format is detected during PDF parsing
+- Default generated template preserves original CV style when possible
 
 ## Verification
 

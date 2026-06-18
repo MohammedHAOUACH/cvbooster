@@ -49,11 +49,16 @@ async def generate_cv(
         raise HTTPException(status_code=404, detail="Job posting not found")
     job_posting = job_result.data[0]
 
+    output_language = job_posting.get("detected_language") or "en"
+    original_cv_style = original_cv.get("extracted_data", {}).get("detected_style") or "clean"
+    template_name = request.template_name or original_cv_style
+
     # 3. Generate optimized CV content via LLM
     try:
         optimized_cv = await optimize_cv_for_job(
             original_cv_data=original_cv.get("extracted_data", {}),
             job_posting_data=job_posting,
+            output_language=output_language,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM generation failed: {str(e)}")
@@ -67,7 +72,9 @@ async def generate_cv(
     # 5. Generate PDF
     pdf_path = generate_cv_pdf(
         cv_data=optimized_cv,
-        template_name=request.template_name,
+        template_name=template_name,
+        output_language=output_language,
+        original_cv_style=original_cv_style,
     )
 
     # 6. Store PDF locally
@@ -87,7 +94,9 @@ async def generate_cv(
         "user_id": user_id,
         "original_cv_id": request.original_cv_id,
         "job_posting_id": request.job_posting_id,
-        "template_name": request.template_name,
+        "template_name": template_name,
+        "output_language": output_language,
+        "original_cv_style": original_cv_style,
         "file_url": file_url,
         "llm_output": optimized_cv,
         "ats_score": ats_result.get("score"),
@@ -192,10 +201,15 @@ async def regenerate_with_template(
 
     existing = result.data[0]
 
+    output_language = existing.get("output_language") or "en"
+    original_cv_style = existing.get("original_cv_style") or "clean"
+
     # Regenerate PDF with new template
     pdf_path = generate_cv_pdf(
         cv_data=existing.get("llm_output", {}),
         template_name=request.template_name,
+        output_language=output_language,
+        original_cv_style=original_cv_style,
     )
 
     file_id = f"{uuid.uuid4().hex}.pdf"

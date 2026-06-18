@@ -29,6 +29,8 @@ class GeneratedCV(GeneratedCVBase):
     id: str
     user_id: str
     file_url: str
+    output_language: Optional[str] = "en"
+    original_cv_style: Optional[str] = "clean"
     llm_output: Optional[dict[str, Any]] = None
     ats_score: Optional[float] = None
     keywords_matched: Optional[int] = None

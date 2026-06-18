@@ -29,8 +29,12 @@ Provides authenticated APIs for:
 - Database/storage/auth integration via `src/database.py` and `src/services/supabase_service.py`
 - PDF parsing uses LiteParse
 - Web scraping uses crawl4ai
+- Language detection uses langdetect
 - LLM generation uses LiteLLM with OpenRouter
 - PDF rendering uses WeasyPrint
+- Job language detection runs on scrape/paste
+- Generated CV output language defaults to detected job language
+- Default template preserves detected original CV style when possible
 
 ## Work Guidance
 

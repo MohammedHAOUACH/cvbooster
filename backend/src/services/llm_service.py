@@ -20,6 +20,8 @@ RULES:
 7. Output must be valid JSON matching the JSON Resume schema
 8. Do NOT include any markdown or code blocks - return ONLY the JSON object
 9. Make the CV sound natural and professional, not keyword-stuffed
+10. Preserve the original CV section order and format intent where possible
+11. Write all optimized content in the target output language: {output_language}
 
 JSON Resume Schema fields to use:
 - basics: name, label, email, phone, url, summary, location
@@ -43,6 +45,7 @@ Return ONLY valid JSON in the JSON Resume format - no markdown, no explanation."
 async def optimize_cv_for_job(
     original_cv_data: Dict[str, Any],
     job_posting_data: Dict[str, Any],
+    output_language: str = "en",
 ) -> Dict[str, Any]:
     """
     Use LLM to optimize the CV content for a specific job posting.
@@ -50,6 +53,7 @@ async def optimize_cv_for_job(
     Args:
         original_cv_data: Extracted CV data from LiteParse.
         job_posting_data: Job posting data (raw_content, parsed_data).
+        output_language: Target output language for generated CV content.
 
     Returns:
         Optimized CV as JSON Resume format dict.
@@ -63,6 +67,8 @@ async def optimize_cv_for_job(
         job_posting_data=json.dumps(job_posting_data, indent=2),
     )
 
+    system_prompt = SYSTEM_PROMPT.format(output_language=output_language)
+
     # Use local llama.cpp server (OpenAI-compatible)
     local_url = os.environ.get("LOCAL_LLM_URL", "http://localhost:1234")
     local_model = os.environ.get("LOCAL_LLM_MODEL", "Qwen3.6-27B-UD-Q5_K_XL.gguf")
@@ -72,7 +78,7 @@ async def optimize_cv_for_job(
         response = await acompletion(
             model=f"openai/{local_model}",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             api_base=f"{local_url}/v1",

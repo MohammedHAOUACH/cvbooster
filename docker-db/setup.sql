@@ -26,14 +26,15 @@ CREATE TABLE IF NOT EXISTS original_cvs (
 
 -- 3. Job Postings
 CREATE TABLE IF NOT EXISTS job_postings (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  source_url    TEXT,
-  title         TEXT,
-  company       TEXT,
-  raw_content   TEXT,
-  parsed_data   JSONB DEFAULT '{}',
-  created_at    TIMESTAMPTZ DEFAULT now()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  source_url        TEXT,
+  title             TEXT,
+  company           TEXT,
+  raw_content       TEXT,
+  detected_language TEXT DEFAULT 'en',
+  parsed_data       JSONB DEFAULT '{}',
+  created_at        TIMESTAMPTZ DEFAULT now()
 );
 
 -- 4. Generated CVs
@@ -43,6 +44,8 @@ CREATE TABLE IF NOT EXISTS generated_cvs (
   original_cv_id    UUID NOT NULL REFERENCES original_cvs(id) ON DELETE CASCADE,
   job_posting_id    UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
   template_name     TEXT NOT NULL,
+  output_language   TEXT DEFAULT 'en',
+  original_cv_style TEXT DEFAULT 'clean',
   file_url          TEXT NOT NULL,
   llm_output        JSONB DEFAULT '{}',
   ats_score         REAL,

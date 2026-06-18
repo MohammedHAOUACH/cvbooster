@@ -22,6 +22,7 @@ export interface JobPosting {
   title?: string;
   company?: string;
   raw_content: string;
+  detected_language?: string;
   parsed_data?: Record<string, unknown>;
   created_at: string;
 }
@@ -31,6 +32,8 @@ export interface GeneratedCV {
   original_cv_id: string;
   job_posting_id: string;
   template_name: string;
+  output_language?: string;
+  original_cv_style?: string;
   file_url: string;
   ats_score?: number;
   keywords_matched?: number;

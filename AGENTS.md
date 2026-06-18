@@ -78,6 +78,11 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- Generated CV output language must follow the detected job posting language automatically.
+- Default CV template/format must preserve the original uploaded CV format when possible.
+- No manual output language selector is required in the UI.
+- Store detected job language, output language, and original CV style in the database.
+
 ## Child DOX Index
 
 - `backend/AGENTS.md` — FastAPI backend, APIs, services, models, CV templates

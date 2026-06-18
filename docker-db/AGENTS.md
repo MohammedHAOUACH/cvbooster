@@ -23,6 +23,7 @@ Used during local deployment or external database setup.
 - Update `setup.sql` when database schema changes
 - Keep scripts idempotent where possible
 - Document required extensions or privileges if they change
+- Store detected job language, output language, and original CV style on CV/job records
 
 ## Verification
 

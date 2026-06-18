@@ -13,6 +13,7 @@ class JobPostingBase(BaseModel):
 class JobPosting(JobPostingBase):
     id: str
     user_id: str
+    detected_language: Optional[str] = "en"
     parsed_data: Optional[dict[str, Any]] = None
     created_at: datetime
 
