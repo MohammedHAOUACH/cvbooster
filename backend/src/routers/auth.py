@@ -1,8 +1,7 @@
-from fastapi import Request,  APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 
-from supabase import Client
-from ..database import get_supabase
-from ..models.user import UserProfile, UserUpdate
+from ..services.local_storage import storage
+from ..models.user import UserUpdate
 from ..utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -12,20 +11,18 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 async def get_session(
     user_id: str = Depends(get_current_user_id)
 ):
-    """Get current user profile from Supabase JWT token."""
-    supabase: Client = get_supabase()
+    """Get current user profile."""
+    profile = storage.get("profiles", user_id)
 
-    profile = (
-        supabase.table("profiles")
-        .select("*")
-        .eq("id", user_id)
-        .execute()
-    )
+    if not profile:
+        profile = storage.insert("profiles", {
+            "id": user_id,
+            "full_name": "Local Test User",
+            "avatar_url": "",
+            "provider": "local",
+        })
 
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    return {"user": profile.data[0]}
+    return {"user": profile}
 
 
 @router.put("/profile")
@@ -34,16 +31,14 @@ async def update_profile(
     user_id: str = Depends(get_current_user_id)
 ):
     """Update current user profile."""
-    supabase: Client = get_supabase()
+    profile = storage.get("profiles", user_id)
 
-    result = (
-        supabase.table("profiles")
-        .update(update.model_dump(exclude_unset=True))
-        .eq("id", user_id)
-        .execute()
-    )
+    if not profile:
+        profile = storage.insert("profiles", {"id": user_id})
 
-    if not result.data:
+    updated = storage.update("profiles", user_id, update.model_dump(exclude_unset=True))
+
+    if not updated:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    return {"user": result.data[0]}
+    return {"user": updated}

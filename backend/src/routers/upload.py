@@ -2,11 +2,9 @@ import os
 import uuid
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from fastapi.responses import FileResponse
-from supabase import Client
-from ..database import get_supabase
+from ..services.local_storage import storage
 from ..utils.auth import get_current_user_id
 from ..services.pdf_parser import parse_cv_pdf
-from ..models.response import MessageResponse
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -20,7 +18,7 @@ async def upload_cv(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id)
 ):
-    """Upload a CV PDF file, parse it with LiteParse, and store locally + in Supabase."""
+    """Upload a CV PDF file, parse it with LiteParse, and store locally."""
     if not file.content_type or file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
@@ -40,7 +38,7 @@ async def upload_cv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {str(e)}")
 
-    # Save metadata to database
+    # Save metadata to local storage
     cv_data = {
         "user_id": user_id,
         "file_url": f"/api/files/original-cvs/{file_id}",
@@ -49,13 +47,8 @@ async def upload_cv(
         "extracted_data": extracted_data,
     }
 
-    supabase: Client = get_supabase()
-    result = supabase.table("original_cvs").insert(cv_data).execute()
-
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to save CV")
-
-    return {"cv": result.data[0], "message": "CV uploaded and parsed successfully"}
+    cv = storage.insert("original_cvs", cv_data)
+    return {"cv": cv, "message": "CV uploaded and parsed successfully"}
 
 
 @router.get("/cv/{cv_id}")
@@ -64,20 +57,11 @@ async def get_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a specific original CV."""
-    supabase: Client = get_supabase()
-
-    result = (
-        supabase.table("original_cvs")
-        .select("*")
-        .eq("id", cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    cv = storage.get("original_cvs", cv_id)
+    if not cv or cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    return {"cv": result.data[0]}
+    return {"cv": cv}
 
 
 @router.get("/cvs")
@@ -85,17 +69,7 @@ async def list_cvs(
     user_id: str = Depends(get_current_user_id)
 ):
     """List all original CVs for the current user."""
-    supabase: Client = get_supabase()
-
-    result = (
-        supabase.table("original_cvs")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    return {"cvs": result.data or []}
+    return {"cvs": storage.list_by_user("original_cvs", user_id)}
 
 
 @router.delete("/cv/{cv_id}")
@@ -104,19 +78,13 @@ async def delete_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Delete an original CV."""
-    supabase: Client = get_supabase()
-
-    result = (
-        supabase.table("original_cvs")
-        .select("*")
-        .eq("id", cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    cv = storage.get("original_cvs", cv_id)
+    if not cv or cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    supabase.table("original_cvs").delete().eq("id", cv_id).execute()
+    storage.delete("original_cvs", cv_id)
+    file_path = os.path.join(ORIGINAL_CVS_DIR, os.path.basename(cv.get("file_url", "")))
+    if os.path.isfile(file_path):
+        os.remove(file_path)
 
-    return MessageResponse(message="CV deleted successfully")
+    return {"message": "CV deleted successfully"}

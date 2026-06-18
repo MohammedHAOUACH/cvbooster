@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import get_settings
-from .database import get_supabase
 from .routers import auth, upload, scraper, cv_engine, templates, files
 
 

@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
-from supabase import Client
-from ..database import get_supabase
+from ..services.local_storage import storage
 from ..utils.auth import get_current_user_id
 from ..services.job_scraper import scrape_job_url
-from ..models.job import JobPosting, ScrapeJobRequest, PasteJobRequest
+from ..models.job import ScrapeJobRequest, PasteJobRequest
 
 try:
     from langdetect import detect
@@ -26,8 +25,6 @@ async def scrape_job(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
-    supabase: Client = get_supabase()
-
     job_data = {
         "user_id": user_id,
         "source_url": request.source_url,
@@ -38,12 +35,8 @@ async def scrape_job(
         "parsed_data": scraped_data.get("parsed_data"),
     }
 
-    result = supabase.table("job_postings").insert(job_data).execute()
-
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to save job posting")
-
-    return {"job": result.data[0], "message": "Job scraped and saved successfully"}
+    job = storage.insert("job_postings", job_data)
+    return {"job": job, "message": "Job scraped and saved successfully"}
 
 
 @router.post("/paste")
@@ -52,8 +45,6 @@ async def paste_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Submit a job posting by pasting the text directly."""
-    supabase: Client = get_supabase()
-
     job_data = {
         "user_id": user_id,
         "title": request.title,
@@ -62,12 +53,8 @@ async def paste_job(
         "detected_language": _detect_job_language(request.raw_content or ""),
     }
 
-    result = supabase.table("job_postings").insert(job_data).execute()
-
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to save job posting")
-
-    return {"job": result.data[0], "message": "Job posting saved successfully"}
+    job = storage.insert("job_postings", job_data)
+    return {"job": job, "message": "Job posting saved successfully"}
 
 
 @router.get("/{job_id}")
@@ -76,20 +63,12 @@ async def get_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a specific job posting."""
-    supabase: Client = get_supabase()
+    job = storage.get("job_postings", job_id)
 
-    result = (
-        supabase.table("job_postings")
-        .select("*")
-        .eq("id", job_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    if not job or job.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
 
-    return {"job": result.data[0]}
+    return {"job": job}
 
 
 @router.get("")
@@ -97,17 +76,7 @@ async def list_jobs(
     user_id: str = Depends(get_current_user_id)
 ):
     """List all job postings for the current user."""
-    supabase: Client = get_supabase()
-
-    result = (
-        supabase.table("job_postings")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    return {"jobs": result.data or []}
+    return {"jobs": storage.list_by_user("job_postings", user_id)}
 
 
 @router.delete("/{job_id}")
@@ -116,16 +85,12 @@ async def delete_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Delete a job posting."""
-    supabase: Client = get_supabase()
+    job = storage.get("job_postings", job_id)
 
-    result = (
-        supabase.table("job_postings")
-        .delete()
-        .eq("id", job_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
+    if not job or job.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Job posting not found")
 
+    storage.delete("job_postings", job_id)
     return {"message": "Job posting deleted successfully"}
 
 

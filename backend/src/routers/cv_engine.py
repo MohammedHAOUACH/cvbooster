@@ -2,8 +2,8 @@ import os
 import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import FileResponse
-from supabase import Client
-from ..database import get_supabase
+
+from ..services.local_storage import storage
 from ..utils.auth import get_current_user_id
 from ..models.cv import GenerateCVRequest, RetemplateCVRequest
 from ..services.llm_service import optimize_cv_for_job
@@ -23,31 +23,13 @@ async def generate_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Generate an ATS-optimized CV tailored to a job posting."""
-    supabase: Client = get_supabase()
-
-    # 1. Get original CV
-    cv_result = (
-        supabase.table("original_cvs")
-        .select("*")
-        .eq("id", request.original_cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-    if not cv_result.data:
+    original_cv = storage.get("original_cvs", request.original_cv_id)
+    if not original_cv or original_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Original CV not found")
-    original_cv = cv_result.data[0]
 
-    # 2. Get job posting
-    job_result = (
-        supabase.table("job_postings")
-        .select("*")
-        .eq("id", request.job_posting_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-    if not job_result.data:
+    job_posting = storage.get("job_postings", request.job_posting_id)
+    if not job_posting or job_posting.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
-    job_posting = job_result.data[0]
 
     output_language = job_posting.get("detected_language") or "en"
     original_cv_style = original_cv.get("extracted_data", {}).get("detected_style") or "clean"
@@ -81,15 +63,14 @@ async def generate_cv(
     generated_id = str(uuid.uuid4())
     file_id = f"{generated_id}.pdf"
     dest_path = os.path.join(GENERATED_CVS_DIR, file_id)
-    
-    # Move/copy the generated PDF to our storage
+
     import shutil
     if pdf_path != dest_path:
         shutil.copy2(pdf_path, dest_path)
 
     file_url = f"/api/files/generated-cvs/{file_id}"
 
-    # 7. Save to database
+    # 7. Save to local storage
     gen_cv_data = {
         "user_id": user_id,
         "original_cv_id": request.original_cv_id,
@@ -104,13 +85,9 @@ async def generate_cv(
         "keywords_total": ats_result.get("keywords_total"),
     }
 
-    result = supabase.table("generated_cvs").insert(gen_cv_data).execute()
-
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to save generated CV")
-
+    generated_cv = storage.insert("generated_cvs", gen_cv_data)
     return {
-        "generated_cv": result.data[0],
+        "generated_cv": generated_cv,
         "message": "CV generated successfully",
     }
 
@@ -121,20 +98,12 @@ async def get_generated_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a generated CV details."""
-    supabase: Client = get_supabase()
+    generated_cv = storage.get("generated_cvs", cv_id)
 
-    result = (
-        supabase.table("generated_cvs")
-        .select("*")
-        .eq("id", cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
 
-    return {"generated_cv": result.data[0]}
+    return {"generated_cv": generated_cv}
 
 
 @router.get("/{cv_id}/download")
@@ -143,21 +112,18 @@ async def download_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Download the generated PDF."""
-    supabase: Client = get_supabase()
+    generated_cv = storage.get("generated_cvs", cv_id)
 
-    result = (
-        supabase.table("generated_cvs")
-        .select("file_url")
-        .eq("id", cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
 
-    file_url = result.data[0]["file_url"]
-    return {"download_url": file_url}
+    file_url = generated_cv.get("file_url")
+    file_path = os.path.join(GENERATED_CVS_DIR, os.path.basename(file_url)) if file_url else None
+
+    if not file_path or not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="PDF not found")
+
+    return FileResponse(file_path, media_type="application/pdf")
 
 
 @router.get("")
@@ -165,17 +131,7 @@ async def list_generated_cvs(
     user_id: str = Depends(get_current_user_id)
 ):
     """List all generated CVs for the current user."""
-    supabase: Client = get_supabase()
-
-    result = (
-        supabase.table("generated_cvs")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    return {"generated_cvs": result.data or []}
+    return {"generated_cvs": storage.list_by_user("generated_cvs", user_id)}
 
 
 @router.post("/{cv_id}/retail")
@@ -185,28 +141,17 @@ async def regenerate_with_template(
     user_id: str = Depends(get_current_user_id)
 ):
     """Regenerate the CV with a different template."""
-    supabase: Client = get_supabase()
+    generated_cv = storage.get("generated_cvs", cv_id)
 
-    # Get existing generated CV
-    result = (
-        supabase.table("generated_cvs")
-        .select("*")
-        .eq("id", cv_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not result.data:
+    if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
 
-    existing = result.data[0]
-
-    output_language = existing.get("output_language") or "en"
-    original_cv_style = existing.get("original_cv_style") or "clean"
+    output_language = generated_cv.get("output_language") or "en"
+    original_cv_style = generated_cv.get("original_cv_style") or "clean"
 
     # Regenerate PDF with new template
     pdf_path = generate_cv_pdf(
-        cv_data=existing.get("llm_output", {}),
+        cv_data=generated_cv.get("llm_output", {}),
         template_name=request.template_name,
         output_language=output_language,
         original_cv_style=original_cv_style,
@@ -214,19 +159,20 @@ async def regenerate_with_template(
 
     file_id = f"{uuid.uuid4().hex}.pdf"
     dest_path = os.path.join(GENERATED_CVS_DIR, file_id)
-    
+
     import shutil
     if pdf_path != dest_path:
         shutil.copy2(pdf_path, dest_path)
 
     new_url = f"/api/files/generated-cvs/{file_id}"
 
-    # Update database
-    updated = (
-        supabase.table("generated_cvs")
-        .update({"template_name": request.template_name, "file_url": new_url})
-        .eq("id", cv_id)
-        .execute()
-    )
+    # Update local storage
+    updated = storage.update("generated_cvs", cv_id, {
+        "template_name": request.template_name,
+        "file_url": new_url,
+    })
 
-    return {"generated_cv": updated.data[0], "message": "Template updated"}
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update generated CV")
+
+    return {"generated_cv": updated, "message": "Template updated"}
