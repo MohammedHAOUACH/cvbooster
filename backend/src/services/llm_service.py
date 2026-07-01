@@ -22,6 +22,7 @@ RULES:
 9. Make the CV sound natural and professional, not keyword-stuffed
 10. Preserve the original CV section order and format intent where possible
 11. CRITICAL: Write ALL content (summary, experience descriptions, education, skills) in {output_language_full}. If the job is in French, write the entire CV in French. If in English, write in English. Do NOT mix languages.
+12. Do NOT include images, photos, avatars, or any non-text content. This is a text-only CV.
 
 JSON Resume Schema fields to use:
 - basics: name, label, email, phone, url, summary, location
@@ -89,9 +90,10 @@ async def optimize_cv_for_job(
                 {"role": "user", "content": user_prompt},
             ],
             api_base=f"{local_url}/v1",
-            api_key="sk-no-key-required",
+            api_key="sk-xxx",
             temperature=0.3,
             timeout=600,
+            extra_body={"thinking": {"enabled": False}},
         )
 
         result_text = response.choices[0].message.content
