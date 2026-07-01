@@ -68,6 +68,12 @@ def generate_cv_pdf(
     labels = _get_section_labels(output_language)
     section_order = _detect_section_order(labels, cv_data)
 
+    # Strip empty fields from basics to avoid rendering {'label': '', 'url': '', ...}
+    if "basics" in cv_data and isinstance(cv_data["basics"], dict):
+        for key in list(cv_data["basics"]):
+            if cv_data["basics"][key] in (None, "", {}, []):
+                del cv_data["basics"][key]
+
     # Render HTML
     html_content = template.render(
         cv=cv_data,
