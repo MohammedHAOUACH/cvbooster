@@ -14,14 +14,14 @@ RULES:
 1. Use EXACT keywords from the job description (verbatim match)
 2. Never fabricate experience, skills, or achievements
 3. Rephrase existing experience to highlight relevant aspects
-4. Use standard section headers: Experience, Education, Skills, Summary
+4. Use standard section headers in the target language (e.g. Expérience, Formation, Compétences for French; Experience, Education, Skills for English)
 5. Keep it to 1-2 pages maximum
 6. Use quantifiable achievements where possible
 7. Output must be valid JSON matching the JSON Resume schema
 8. Do NOT include any markdown or code blocks - return ONLY the JSON object
 9. Make the CV sound natural and professional, not keyword-stuffed
 10. Preserve the original CV section order and format intent where possible
-11. Write all optimized content in the target output language: {output_language}
+11. CRITICAL: Write ALL content (summary, experience descriptions, education, skills) in {output_language_full}. If the job is in French, write the entire CV in French. If in English, write in English. Do NOT mix languages.
 
 JSON Resume Schema fields to use:
 - basics: name, label, email, phone, url, summary, location
@@ -37,6 +37,8 @@ USER_PROMPT_TEMPLATE = """Original Resume (extracted):
 
 Job Description:
 {job_posting_data}
+
+CRITICAL: The entire CV must be written in {output_language_full}. Write the summary, all experience descriptions, education, skills, and section headers in {output_language_full}. Do NOT mix languages.
 
 Please rewrite the resume to maximize ATS compatibility with this job.
 Return ONLY valid JSON in the JSON Resume format - no markdown, no explanation."""
@@ -61,13 +63,18 @@ async def optimize_cv_for_job(
     from litellm import acompletion
     import os
 
+    # Convert language code to full name for clearer instructions
+    language_map = {"fr": "French", "en": "English", "es": "Spanish", "de": "German", "it": "Italian", "pt": "Portuguese", "ar": "Arabic"}
+    output_language_full = language_map.get(output_language, output_language)
+
     # Build prompts
     user_prompt = USER_PROMPT_TEMPLATE.format(
         original_cv_data=json.dumps(original_cv_data, indent=2),
         job_posting_data=json.dumps(job_posting_data, indent=2),
+        output_language_full=output_language_full,
     )
 
-    system_prompt = SYSTEM_PROMPT.format(output_language=output_language)
+    system_prompt = SYSTEM_PROMPT.format(output_language_full=output_language_full)
 
     # Use local llama.cpp server (OpenAI-compatible)
     local_url = os.environ.get("LOCAL_LLM_URL", "http://localhost:1234")

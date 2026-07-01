@@ -15,14 +15,14 @@
 
 {% if cv.basics.summary %}
 <div class="section">
-    <div class="section-title">Professional Summary</div>
+    <div class="section-title">{{ section_labels.summary }}</div>
     <p>{{ cv.basics.summary }}</p>
 </div>
 {% endif %}
 
 {% if cv.work %}
 <div class="section">
-    <div class="section-title">Work Experience</div>
+    <div class="section-title">{{ section_labels.work }}</div>
     {% for job in cv.work %}
     <div class="entry">
         <div class="entry-header">
@@ -50,7 +50,7 @@
 
 {% if cv.education %}
 <div class="section">
-    <div class="section-title">Education</div>
+    <div class="section-title">{{ section_labels.education }}</div>
     {% for edu in cv.education %}
     <div class="entry">
         <div class="entry-header">
@@ -72,7 +72,7 @@
 
 {% if cv.skills %}
 <div class="section">
-    <div class="section-title">Skills</div>
+    <div class="section-title">{{ section_labels.skills }}</div>
     {% for skill in cv.skills %}
     <div class="entry">
         <span class="entry-title">{{ skill.name }}</span>
@@ -90,7 +90,7 @@
 
 {% if cv.projects %}
 <div class="section">
-    <div class="section-title">Projects</div>
+    <div class="section-title">{{ section_labels.projects }}</div>
     {% for project in cv.projects %}
     <div class="entry">
         <div class="entry-header">
@@ -111,7 +111,7 @@
 
 {% if cv.certificates %}
 <div class="section">
-    <div class="section-title">Certifications</div>
+    <div class="section-title">{{ section_labels.certificates }}</div>
     {% for cert in cv.certificates %}
     <div class="entry">
         <div class="entry-header">
