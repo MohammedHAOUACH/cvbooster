@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
+import { LogOut, Plus, Sparkles } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -20,24 +21,26 @@ export default function DashboardLayout({
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-heading font-bold text-foreground">
             Dashboard
             {user?.full_name && (
-              <span className="text-base font-normal text-gray-500 ml-2">
+              <span className="text-base font-normal text-muted ml-2">
                 — {user.full_name}
               </span>
             )}
           </h1>
-          <p className="text-gray-600">Manage your CVs and job applications</p>
+          <p className="text-muted">Manage your CVs and job applications</p>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/create" className="btn btn-primary">
-            + Create New CV
+          <a href="/create" className="btn btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Create New CV
           </a>
-          <button onClick={signOut} className="btn btn-ghost text-sm">
-            Sign out
+          <button onClick={signOut} className="btn btn-ghost text-sm flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </header>

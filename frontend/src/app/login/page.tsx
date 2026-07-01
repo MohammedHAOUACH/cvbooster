@@ -1,6 +1,8 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
+import { Spinner } from "@/components/ui";
+import { ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const { user, loading, error, signIn } = useAuth();
@@ -8,33 +10,45 @@ export default function LoginPage() {
   // If already logged in or auth checking, show spinner
   if (loading || user) {
     return (
-      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-surface">
         <div className="text-center">
-          <div className="animate-spin text-3xl mb-4">⚙️</div>
-          <p className="text-gray-600">Connecting...</p>
+          <Spinner size="lg" />
+          <p className="text-muted mt-4">Connecting...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6">
-      <div className="card p-8 max-w-md w-full">
-        <h1 className="text-2xl font-bold text-center mb-2">Welcome to CVBooster</h1>
-        <p className="text-gray-600 text-center mb-8">
-          Sign in to start creating ATS-optimized resumes
-        </p>
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6 bg-gradient-to-b from-surface to-white py-16">
+      <div className="card p-8 max-w-md w-full shadow-standard animate-fade-in">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 rounded-xl bg-primary-100 text-primary flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-heading font-bold text-foreground mb-2">
+            Welcome to CVBooster
+          </h1>
+          <p className="text-muted">
+            Sign in to start creating ATS-optimized resumes
+          </p>
+        </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
             {error}
           </div>
         )}
 
+        {/* Auth buttons */}
         <div className="space-y-3">
           <button
             onClick={() => signIn("google")}
-            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3"
+            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -47,7 +61,7 @@ export default function LoginPage() {
 
           <button
             onClick={() => signIn("facebook")}
-            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3"
+            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -56,9 +70,15 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-6">
-          Free to use — no credit card required
-        </p>
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-muted flex items-center justify-center gap-2">
+            <svg className="w-3.5 h-3.5 text-success" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            Free to use — no credit card required
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, endpoints } from "@/lib/api-client";
 import { useCVStore } from "@/store/cv-store";
 import type { GeneratedCV, OriginalCV } from "@/store/cv-store";
+import { FileText, FolderOpen, Star, Plus, ExternalLink, Download, Eye, FileUp, Target, Zap } from "lucide-react";
 
 export default function DashboardPage() {
   const setAllGeneratedCVs = useCVStore((s) => s.setAllGeneratedCVs);
@@ -42,16 +43,17 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card p-4 animate-pulse">
-              <div className="h-8 w-12 bg-gray-200 rounded mb-2" />
-              <div className="h-4 w-24 bg-gray-200 rounded" />
+            <div key={i} className="card p-5 animate-pulse">
+              <div className="h-3 w-16 bg-gray-200 rounded mb-3" />
+              <div className="h-7 w-10 bg-gray-200 rounded mb-1" />
+              <div className="h-2 w-20 bg-gray-200 rounded" />
             </div>
           ))}
         </div>
         <div className="card p-6 animate-pulse">
-          <div className="h-6 w-40 bg-gray-200 rounded mb-4" />
+          <div className="h-5 w-32 bg-gray-200 rounded mb-4" />
           <div className="h-20 bg-gray-200 rounded" />
         </div>
       </div>
@@ -69,97 +71,141 @@ export default function DashboardPage() {
     );
   }
 
+  const avgScore = generatedCVs.length > 0
+    ? Math.round(generatedCVs.reduce((sum, cv) => sum + (cv.ats_score || 0), 0) / generatedCVs.length)
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="card p-4">
-          <div className="text-2xl font-bold text-primary-600">{generatedCVs.length}</div>
-          <div className="text-sm text-gray-600">CVs Generated</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-2xl font-bold text-primary-600">{originalCVs.length}</div>
-          <div className="text-sm text-gray-600">Original CVs</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-2xl font-bold text-primary-600">
-            {generatedCVs.length > 0
-              ? Math.round(
-                  generatedCVs.reduce((sum, cv) => sum + (cv.ats_score || 0), 0) /
-                    generatedCVs.length
-                )
-              : 0}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary flex items-center justify-center">
+              <FileText className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-medium text-muted">CVs Generated</span>
           </div>
-          <div className="text-sm text-gray-600">Avg ATS Score</div>
+          <div className="text-2xl font-heading font-bold text-foreground">{generatedCVs.length}</div>
+        </div>
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary flex items-center justify-center">
+              <FolderOpen className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-medium text-muted">Original CVs</span>
+          </div>
+          <div className="text-2xl font-heading font-bold text-foreground">{originalCVs.length}</div>
+        </div>
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary flex items-center justify-center">
+              <Star className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-medium text-muted">Avg ATS Score</span>
+          </div>
+          <div className="text-2xl font-heading font-bold text-foreground">{avgScore}%</div>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <a href="/create" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition text-center">
-            <div className="text-2xl mb-2">📄</div>
-            <div className="font-medium">Upload Your CV</div>
-            <div className="text-sm text-gray-500">Upload your existing PDF resume</div>
+        <h2 className="text-lg font-heading font-semibold text-foreground mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <FileUp className="w-5 h-5" />
+            </div>
+            <div className="font-medium text-foreground">Upload Your CV</div>
+            <div className="text-sm text-muted mt-1">Upload your existing PDF resume</div>
           </a>
-          <a href="/create" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition text-center">
-            <div className="text-2xl mb-2">🎯</div>
-            <div className="font-medium">Add Job Posting</div>
-            <div className="text-sm text-gray-500">Paste a URL or job description</div>
+          <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Target className="w-5 h-5" />
+            </div>
+            <div className="font-medium text-foreground">Add Job Posting</div>
+            <div className="text-sm text-muted mt-1">Paste a URL or job description</div>
           </a>
-          <a href="/create" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition text-center">
-            <div className="text-2xl mb-2">✨</div>
-            <div className="font-medium">Generate CV</div>
-            <div className="text-sm text-gray-500">Create your ATS-optimized resume</div>
+          <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div className="font-medium text-foreground">Generate CV</div>
+            <div className="text-sm text-muted mt-1">Create your ATS-optimized resume</div>
           </a>
         </div>
       </div>
 
       {/* Recent Generated CVs */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold mb-4">Recent Generated CVs</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-heading font-semibold text-foreground">Recent Generated CVs</h2>
+          {generatedCVs.length > 0 && (
+            <a href="/create" className="btn btn-primary text-xs flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" />
+              New CV
+            </a>
+          )}
+        </div>
         {generatedCVs.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            No CVs generated yet. Click &quot;Create New CV&quot; to get started!
+          <div className="text-center py-12 text-muted">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-6 h-6" />
+            </div>
+            <p className="font-medium text-foreground mb-1">No CVs generated yet</p>
+            <p className="text-sm mb-4">Click "Create New CV" to get started!</p>
+            <a href="/create" className="btn btn-primary">Create Your First CV</a>
           </div>
         ) : (
           <div className="space-y-3">
-            {generatedCVs.slice(0, 5).map((cv) => (
-              <div key={cv.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
-                <div>
-                  <div className="font-medium">
-                    CV — {cv.template_name.charAt(0).toUpperCase() + cv.template_name.slice(1)} Template
+            {generatedCVs.slice(0, 5).map((cv) => {
+              const score = cv.ats_score ? Math.round(cv.ats_score) : null;
+              const scoreColor = score !== null
+                ? score >= 80 ? "text-success" : score >= 60 ? "text-amber-500" : "text-red-500"
+                : "text-muted";
+
+              return (
+                <div key={cv.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border border-border rounded-lg hover:bg-surface transition-colors">
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground truncate">
+                      {cv.template_name.charAt(0).toUpperCase() + cv.template_name.slice(1)} Template
+                    </div>
+                    <div className="text-sm text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span>{new Date(cv.created_at).toLocaleDateString()}</span>
+                      {score !== null && (
+                        <span className={`font-medium ${scoreColor}`}>ATS: {score}%</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {new Date(cv.created_at).toLocaleDateString()} · ATS Score: {cv.ats_score?.toFixed(0) || "N/A"}%
+                  <div className="flex gap-2 shrink-0">
+                    <a
+                      href={`/preview/${cv.id}`}
+                      className="btn btn-ghost text-xs flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Details
+                    </a>
+                    <a
+                      href={cv.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline text-xs flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View
+                    </a>
+                    <a
+                      href={cv.file_url}
+                      download={`cv-${cv.id}.pdf`}
+                      className="btn btn-primary text-xs flex items-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download
+                    </a>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <a
-                    href={cv.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline text-xs"
-                  >
-                    Preview
-                  </a>
-                  <a
-                    href={cv.file_url}
-                    download={`cv-${cv.id}.pdf`}
-                    className="btn btn-primary text-xs"
-                  >
-                    Download
-                  </a>
-                  <a
-                    href={`/preview?id=${cv.id}&score=${cv.ats_score || 0}`}
-                    className="btn btn-ghost text-xs"
-                  >
-                    Details
-                  </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
