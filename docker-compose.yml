@@ -25,8 +25,6 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
       NEXT_PUBLIC_API_URL: /api
       NEXT_PUBLIC_CALLBACK_URL: /auth/callback
-    ports:
-      - "3000:3000"
     restart: unless-stopped
     depends_on:
       - api
