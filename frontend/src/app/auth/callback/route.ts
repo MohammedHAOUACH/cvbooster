@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -8,31 +6,30 @@ export async function GET(request: Request) {
   const next = url.searchParams.get("next") || "/dashboard";
 
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // ignore
-            }
-          },
-        },
-      },
-    );
+    try {
+      // Call backend to exchange code for token
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/auth/google/callback?code=${code}`, {
+        redirect: "manual",
+      });
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      if (res.ok) {
+        const data = await res.json();
+        const token = data.access_token;
+
+        // Set token in cookie and redirect
+        const response = NextResponse.redirect(new URL(next, request.url));
+        response.cookies.set("cvbooster_token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+          path: "/",
+        });
+        return response;
+      }
+    } catch (err) {
+      console.error("Auth callback error:", err);
     }
   }
 

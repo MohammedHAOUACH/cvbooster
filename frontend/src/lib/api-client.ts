@@ -1,23 +1,22 @@
 import axios from "axios";
+import { getToken } from "@/lib/auth/client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const api = axios.create({
   baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
 });
 
-// Attach Supabase Bearer token before each request
-api.interceptors.request.use(async (config) => {
-  try {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data } = await supabase.auth.getSession();
-    if (data?.session?.access_token) {
-      config.headers.Authorization = `Bearer ${data.session.access_token}`;
-    }
-  } catch {
-    // Silently fail — let the backend handle auth errors
+// Attach JWT token before each request
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Set JSON content type for POST/PUT/PATCH if not already set
+  if ((config.method === 'post' || config.method === 'put' || config.method === 'patch') && 
+      !(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json';
   }
   return config;
 });

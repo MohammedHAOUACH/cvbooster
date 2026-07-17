@@ -1,8 +1,9 @@
 """
-LLM service for CV optimization using litellm (multi-provider abstraction).
+LLM service for CV optimization using OpenRouter.
 Generates ATS-optimized CV content in JSON Resume format.
 """
 import json
+import os
 from typing import Any, Dict
 
 
@@ -52,73 +53,105 @@ async def optimize_cv_for_job(
 ) -> Dict[str, Any]:
     """
     Use LLM to optimize the CV content for a specific job posting.
-
+    
     Args:
         original_cv_data: Extracted CV data from LiteParse.
         job_posting_data: Job posting data (raw_content, parsed_data).
         output_language: Target output language for generated CV content.
-
+    
     Returns:
         Optimized CV as JSON Resume format dict.
     """
     from litellm import acompletion
-    import os
-
+    
     # Convert language code to full name for clearer instructions
     language_map = {"fr": "French", "en": "English", "es": "Spanish", "de": "German", "it": "Italian", "pt": "Portuguese", "ar": "Arabic"}
     output_language_full = language_map.get(output_language, output_language)
-
+    
     # Build prompts
     user_prompt = USER_PROMPT_TEMPLATE.format(
         original_cv_data=json.dumps(original_cv_data, indent=2),
         job_posting_data=json.dumps(job_posting_data, indent=2),
         output_language_full=output_language_full,
     )
-
+    
     system_prompt = SYSTEM_PROMPT.format(output_language_full=output_language_full)
-
-    # Use local llama.cpp server (OpenAI-compatible)
-    local_url = os.environ.get("LOCAL_LLM_URL", "http://localhost:1234")
-    local_model = os.environ.get("LOCAL_LLM_MODEL", "Qwen3.6-27B-UD-Q5_K_XL.gguf")
-
-    try:
-        print(f"[LLM] Starting CV optimization with local model: {local_model}")
-        response = await acompletion(
-            model=f"openai/{local_model}",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            api_base=f"{local_url}/v1",
-            api_key="sk-xxx",
-            temperature=0.3,
-            timeout=600,
-            extra_body={"thinking": {"enabled": False}},
-        )
-
-        result_text = response.choices[0].message.content
-        print("[LLM] Response received, parsing JSON...")
-
-        # Parse JSON from response
-        cv_data = _parse_llm_json(result_text)
-
-        return cv_data
-
-    except Exception as e:
-        print(f"[LLM] Error: {str(e)}")
-        raise RuntimeError(f"LLM API call failed: {str(e)}")
+    
+    # Get OpenRouter config
+    use_openrouter = os.environ.get("USE_OPENROUTER", "false").lower() == "true"
+    openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    openrouter_model = os.environ.get("OPENROUTER_MODEL", "qwen/qwen-2.5-coder-32b-instruct:free")
+    
+    if use_openrouter and openrouter_api_key:
+        # Use OpenRouter with configured model
+        model = openrouter_model
+        print(f"[LLM] Using OpenRouter model: {model}")
+        
+        try:
+            response = await acompletion(
+                model=f"openrouter/{model}",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                api_key=openrouter_api_key,
+                temperature=0.3,
+                timeout=300,  # Free models can be slow
+            )
+            
+            result_text = response.choices[0].message.content
+            print("[LLM] Response received, parsing JSON...")
+            
+            # Parse JSON from response
+            cv_data = _parse_llm_json(result_text)
+            
+            return cv_data
+            
+        except Exception as e:
+            print(f"[LLM] OpenRouter error: {str(e)}")
+            raise RuntimeError(f"OpenRouter API call failed: {str(e)}")
+    else:
+        # Fallback to local LLM (llama.cpp)
+        local_url = os.environ.get("LOCAL_LLM_URL", "http://localhost:1234")
+        local_model = os.environ.get("LOCAL_LLM_MODEL", "Qwen3.6-27B-UD-Q5_K_XL.gguf")
+        
+        try:
+            print(f"[LLM] Using local model: {local_model} at {local_url}")
+            response = await acompletion(
+                model=f"openai/{local_model}",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                api_base=f"{local_url}/v1",
+                api_key="sk-xxx",
+                temperature=0.3,
+                timeout=600,
+                extra_body={"thinking": {"enabled": False}},
+            )
+            
+            result_text = response.choices[0].message.content
+            print("[LLM] Response received, parsing JSON...")
+            
+            cv_data = _parse_llm_json(result_text)
+            
+            return cv_data
+            
+        except Exception as e:
+            print(f"[LLM] Local LLM error: {str(e)}")
+            raise RuntimeError(f"Local LLM API call failed: {str(e)}")
 
 
 def _parse_llm_json(text: str) -> Dict[str, Any]:
     """Extract valid JSON from LLM response (handles markdown code blocks)."""
     import re
-
+    
     # Try direct parse first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-
+    
     # Try to extract JSON from markdown code block
     json_match = re.search(r'```(?:json)?\s*\n([\s\S]*?)\n```', text)
     if json_match:
@@ -126,7 +159,7 @@ def _parse_llm_json(text: str) -> Dict[str, Any]:
             return json.loads(json_match.group(1))
         except json.JSONDecodeError:
             pass
-
+    
     # Try to find JSON object in text
     start = text.find('{')
     end = text.rfind('}') + 1
@@ -135,5 +168,5 @@ def _parse_llm_json(text: str) -> Dict[str, Any]:
             return json.loads(text[start:end])
         except json.JSONDecodeError:
             pass
-
+    
     raise ValueError(f"Could not parse JSON from LLM response: {text[:200]}...")

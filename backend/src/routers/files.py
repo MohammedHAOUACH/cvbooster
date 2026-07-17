@@ -4,7 +4,8 @@ from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads")
+# Uploads directory - use environment variable or default
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/app/uploads")
 
 
 @router.get("/original-cvs/{file_path:path}")

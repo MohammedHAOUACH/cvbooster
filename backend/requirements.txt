@@ -12,3 +12,7 @@ python-dotenv
 httpx
 aiofiles
 PyJWT
+sqlalchemy
+google-auth
+google-auth-oauthlib
+google-auth-httplib2

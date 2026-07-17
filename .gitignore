@@ -52,3 +52,6 @@ yarn-error.log*
 
 # Generated PDFs
 generated_cvs/
+
+# Uploads
+uploads/

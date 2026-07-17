@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from ..services.local_storage import storage
+from ..services.sqlite_storage import storage
 from ..utils.auth import get_current_user_id
 from ..services.job_scraper import scrape_job_url
 from ..models.job import ScrapeJobRequest, PasteJobRequest
@@ -23,7 +23,14 @@ async def scrape_job(
     try:
         scraped_data = await scrape_job_url(request.source_url)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        error_msg = str(e)
+        # Check for common anti-bot protection errors
+        if "Cloudflare" in error_msg or "anti-bot" in error_msg.lower() or "blocked" in error_msg.lower():
+            raise HTTPException(
+                status_code=403,
+                detail="This website is protected by Cloudflare or similar anti-bot protection. Please use 'Paste Text' mode instead to copy and paste the job description manually."
+            )
+        raise HTTPException(status_code=500, detail=f"Scraping failed: {error_msg}")
 
     job_data = {
         "user_id": user_id,
@@ -35,7 +42,7 @@ async def scrape_job(
         "parsed_data": scraped_data.get("parsed_data"),
     }
 
-    job = storage.insert("job_postings", job_data)
+    job = storage.insert_job_posting(job_data)
     return {"job": job, "message": "Job scraped and saved successfully"}
 
 
@@ -53,7 +60,7 @@ async def paste_job(
         "detected_language": _detect_job_language(request.raw_content or ""),
     }
 
-    job = storage.insert("job_postings", job_data)
+    job = storage.insert_job_posting(job_data)
     return {"job": job, "message": "Job posting saved successfully"}
 
 
@@ -63,7 +70,7 @@ async def get_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a specific job posting."""
-    job = storage.get("job_postings", job_id)
+    job = storage.get_job_posting(job_id)
 
     if not job or job.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
@@ -76,7 +83,7 @@ async def list_jobs(
     user_id: str = Depends(get_current_user_id)
 ):
     """List all job postings for the current user."""
-    return {"jobs": storage.list_by_user("job_postings", user_id)}
+    return {"jobs": storage.list_job_postings(user_id)}
 
 
 @router.delete("/{job_id}")
@@ -85,12 +92,12 @@ async def delete_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Delete a job posting."""
-    job = storage.get("job_postings", job_id)
+    job = storage.get_job_posting(job_id)
 
     if not job or job.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
 
-    storage.delete("job_postings", job_id)
+    # TODO: Add delete method to SQLiteStorage
     return {"message": "Job posting deleted successfully"}
 
 

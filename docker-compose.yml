@@ -8,7 +8,11 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend:/app
+      - sqlite-data:/app/data
+      - ./uploads:/app/uploads
+    networks:
+      - default
+      - llama_default
     restart: unless-stopped
 
   frontend:
@@ -16,15 +20,15 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
         NEXT_PUBLIC_API_URL: /api
-        NEXT_PUBLIC_CALLBACK_URL: /auth/callback
+        NEXT_PUBLIC_CALLBACK_URL: http://localhost/auth/callback
+        NEXT_PUBLIC_SKIP_AUTH: "true"
+        NEXT_PUBLIC_AUTH_PROVIDER: google
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: https://siekxlkhsppcqwyoxrvn.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_6FCyJEvBLByH-C_DBKHkdQ_QunNQuS4
       NEXT_PUBLIC_API_URL: /api
-      NEXT_PUBLIC_CALLBACK_URL: /auth/callback
+      NEXT_PUBLIC_CALLBACK_URL: http://localhost/auth/callback
+      NEXT_PUBLIC_SKIP_AUTH: "true"
+      NEXT_PUBLIC_AUTH_PROVIDER: google
     restart: unless-stopped
     depends_on:
       - api
@@ -39,3 +43,11 @@ services:
       - api
       - frontend
     restart: unless-stopped
+
+volumes:
+  sqlite-data:
+  uploads:
+
+networks:
+  llama_default:
+    external: true

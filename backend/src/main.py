@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import get_settings
+from .database import init_db
 from .routers import auth, upload, scraper, cv_engine, templates, files
 
 
@@ -15,6 +16,10 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     settings = get_settings()
     print(f"Starting {settings.app_name} in {settings.app_env} mode")
+    
+    # Initialize SQLite database
+    init_db()
+    
     yield
     print("Shutting down")
 

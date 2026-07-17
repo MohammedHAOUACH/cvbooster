@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import FileResponse
 
-from ..services.local_storage import storage
+from ..services.sqlite_storage import storage
 from ..utils.auth import get_current_user_id
 from ..models.cv import GenerateCVRequest, RetemplateCVRequest
 from ..services.llm_service import optimize_cv_for_job
@@ -12,9 +12,12 @@ from ..services.pdf_generator import generate_cv_pdf
 
 router = APIRouter(prefix="/api/cv", tags=["cv-generation"])
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads")
+# Uploads directory - use environment variable or default
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/app/uploads")
 GENERATED_CVS_DIR = os.path.join(UPLOADS_DIR, "generated-cvs")
+ORIGINAL_CVS_DIR = os.path.join(UPLOADS_DIR, "original-cvs")
 os.makedirs(GENERATED_CVS_DIR, exist_ok=True)
+os.makedirs(ORIGINAL_CVS_DIR, exist_ok=True)
 
 
 @router.post("/generate")
@@ -23,16 +26,16 @@ async def generate_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Generate an ATS-optimized CV tailored to a job posting."""
-    original_cv = storage.get("original_cvs", request.original_cv_id)
+    original_cv = storage.get_original_cv(request.original_cv_id)
     if not original_cv or original_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Original CV not found")
 
-    job_posting = storage.get("job_postings", request.job_posting_id)
+    job_posting = storage.get_job_posting(request.job_posting_id)
     if not job_posting or job_posting.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
 
     output_language = job_posting.get("detected_language") or "en"
-    original_cv_style = original_cv.get("extracted_data", {}).get("detected_style") or "clean"
+    original_cv_style = original_cv.get("detected_style") or "clean"
     template_name = request.template_name or original_cv_style
 
     # 3. Generate optimized CV content via LLM
@@ -70,7 +73,7 @@ async def generate_cv(
 
     file_url = f"/api/files/generated-cvs/{file_id}"
 
-    # 7. Save to local storage
+    # 7. Save to SQLite storage
     gen_cv_data = {
         "user_id": user_id,
         "original_cv_id": request.original_cv_id,
@@ -85,7 +88,7 @@ async def generate_cv(
         "keywords_total": ats_result.get("keywords_total"),
     }
 
-    generated_cv = storage.insert("generated_cvs", gen_cv_data)
+    generated_cv = storage.insert_generated_cv(gen_cv_data)
     return {
         "generated_cv": generated_cv,
         "message": "CV generated successfully",
@@ -98,7 +101,7 @@ async def get_generated_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a generated CV details."""
-    generated_cv = storage.get("generated_cvs", cv_id)
+    generated_cv = storage.get_generated_cv(cv_id)
 
     if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
@@ -112,7 +115,7 @@ async def download_cv(
     user_id: str = Depends(get_current_user_id)
 ):
     """Download the generated PDF."""
-    generated_cv = storage.get("generated_cvs", cv_id)
+    generated_cv = storage.get_generated_cv(cv_id)
 
     if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
@@ -131,7 +134,7 @@ async def list_generated_cvs(
     user_id: str = Depends(get_current_user_id)
 ):
     """List all generated CVs for the current user."""
-    return {"generated_cvs": storage.list_by_user("generated_cvs", user_id)}
+    return {"generated_cvs": storage.list_generated_cvs(user_id)}
 
 
 @router.post("/{cv_id}/retail")
@@ -141,7 +144,7 @@ async def regenerate_with_template(
     user_id: str = Depends(get_current_user_id)
 ):
     """Regenerate the CV with a different template."""
-    generated_cv = storage.get("generated_cvs", cv_id)
+    generated_cv = storage.get_generated_cv(cv_id)
 
     if not generated_cv or generated_cv.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Generated CV not found")
@@ -166,8 +169,8 @@ async def regenerate_with_template(
 
     new_url = f"/api/files/generated-cvs/{file_id}"
 
-    # Update local storage
-    updated = storage.update("generated_cvs", cv_id, {
+    # Update SQLite storage
+    updated = storage.update_generated_cv(cv_id, {
         "template_name": request.template_name,
         "file_url": new_url,
     })
