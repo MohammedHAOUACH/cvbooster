@@ -1,14 +1,39 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { setToken } from "@/lib/auth/client";
 import { Spinner } from "@/components/ui";
 import { ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
-  const { user, loading, error, signIn } = useAuth();
+  const router = useRouter();
+  const { user, loading, signIn } = useAuth();
+  const consumedRef = useRef(false);
 
-  // If already logged in or auth checking, show spinner
-  if (loading || user) {
+  // The backend Google OAuth callback redirects here with ?token=<jwt>.
+  // Store the token, clean the URL, then let useAuth load the session.
+  useEffect(() => {
+    if (consumedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      consumedRef.current = true;
+      setToken(token);
+      window.history.replaceState({}, "", "/login");
+      router.refresh();
+    }
+  }, [router]);
+
+  // Already authenticated (including right after the OAuth redirect): go to dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/dashboard");
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
     return (
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-surface">
         <div className="text-center">
@@ -18,6 +43,10 @@ export default function LoginPage() {
       </div>
     );
   }
+
+  const oauthError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("error");
+  const errorLabel =
+    oauthError === "auth_failed" ? "Google sign-in failed. Please try again." : null;
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6 bg-gradient-to-b from-surface to-white py-16">
@@ -35,19 +64,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            {error}
+        {errorLabel && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+            {errorLabel}
           </div>
         )}
 
         {/* Auth buttons */}
         <div className="space-y-3">
           <button
-            onClick={() => signIn("google")}
+            onClick={signIn}
             className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -57,16 +83,6 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Continue with Google
-          </button>
-
-          <button
-            onClick={() => signIn("facebook")}
-            className="btn btn-outline w-full py-3 text-base flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            Continue with Facebook
           </button>
         </div>
 

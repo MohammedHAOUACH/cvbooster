@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getToken } from "@/lib/auth/client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -32,6 +32,28 @@ api.interceptors.response.use(
   },
 );
 
+/**
+ * Fetch a protected resource (e.g. a PDF) as a Blob.
+ * Works for file URLs that require the Authorization header, which plain
+ * <iframe>/<a> navigation cannot send.
+ */
+export async function fetchAuthedBlob(path: string): Promise<Blob> {
+  const res = await api.get<Blob>(path, { responseType: "blob" });
+  return res.data;
+}
+
+/** Trigger a browser download for an in-memory Blob. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const endpoints = {
   auth: {
     session: "/auth/session",
@@ -57,8 +79,9 @@ export const endpoints = {
     generate: "/cv/generate",
     list: "/cv",
     get: (id: string) => `/cv/${id}`,
+    delete: (id: string) => `/cv/${id}`,
     download: (id: string) => `/cv/${id}/download`,
-    retail: (id: string) => `/cv/${id}/retail`,
+    retemplate: (id: string) => `/cv/${id}/retemplate`,
   },
   templates: {
     list: "/templates",

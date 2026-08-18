@@ -5,18 +5,18 @@
 Next.js frontend for CVBooster.
 
 Provides UI for:
-- User authentication
+- User authentication (Google OAuth via the backend)
 - Uploading CVs
 - Scraping/pasting job descriptions
 - Generating and previewing tailored CVs
 - Selecting templates
+- Managing (list/download/delete) original and generated CVs
 
 ## Ownership
 
 - Frontend service owner
 - Owns `frontend/`, including Next.js configuration, source code, assets, and dependencies
 - Consumes the backend API
-- Uses Supabase client libraries for authentication/session handling
 - Deployed behind Nginx
 
 ## Local Contracts
@@ -24,23 +24,27 @@ Provides UI for:
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- React Hook Form + Zod for form validation
-- TanStack React Query for API data
-- Zustand for client state
-- Framer Motion for animations
-- API calls use `/api` relative routes through Nginx
-- Auth callback routing in `src/app/auth/callback/route.ts`
-- Middleware protects authenticated routes
+- React Hook Form + Zod available for form validation
+- TanStack React Query available for API data
+- Zustand for client state (`src/store/cv-store.ts`)
+- API calls use relative `/api` routes:
+  - production: proxied by Nginx to the FastAPI backend
+  - dev (`npm run dev`): proxied by Next.js rewrites in `next.config.ts`
+- Auth: the JWT returned by the backend Google flow is stored in localStorage
+  (`src/lib/auth/client.ts`) and attached by the axios interceptor in
+  `src/lib/api-client.ts`; protected files (PDFs) are fetched as blobs with the
+  auth header (`fetchAuthedBlob` / `downloadBlob`)
+- `NEXT_PUBLIC_SKIP_AUTH=true` builds a dev front-end without sign-in; it must
+  stay in sync with the backend `SKIP_AUTH` (wired in docker-compose.yml)
 
 ## Work Guidance
 
 - Add pages under `src/app/`
 - Add shared components under `src/components/`
-- Keep API integration in `src/lib/api-client.ts`
-- Keep Supabase client/server helpers in `src/lib/supabase/`
-- Keep global CV state in `src/store/cv-store.ts`
-- Prefer explicit types for API responses
+- Keep API integration in `src/lib/api-client.ts` (all endpoints live in `endpoints`)
+- Prefer explicit types for API responses (`src/store/cv-store.ts`)
 - Do not embed backend secrets in client code
+- Do not display fabricated metrics (scores, counts) — show "—" when absent
 
 ## Verification
 
@@ -49,4 +53,4 @@ Provides UI for:
 
 ## Child DOX Index
 
-- `src/AGENTS.md` — Frontend source: app routes, lib, hooks, store, middleware
+- `src/AGENTS.md` — Frontend source: app routes, lib, hooks, store

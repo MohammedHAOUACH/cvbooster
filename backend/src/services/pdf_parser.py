@@ -66,10 +66,12 @@ def _extract_personal_info(text: str) -> Dict[str, str]:
     if email_match:
         info["email"] = email_match.group()
 
-    # Phone
-    phone_match = re.search(r'(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}', text)
+    # Phone (French format first, then generic international)
+    phone_match = re.search(r'(?:\+33[\s.\-]?|0)[1-9](?:[\s.\-]?\d{2}){4}', text)
+    if not phone_match:
+        phone_match = re.search(r'\+\d{1,3}[\s.\-]?\(\d{2,4}\)[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}', text)
     if phone_match:
-        info["phone"] = phone_match.group()
+        info["phone"] = phone_match.group().strip()
 
     # LinkedIn
     linkedin_match = re.search(r'linkedin\.com/in/[\w\-]+', text)

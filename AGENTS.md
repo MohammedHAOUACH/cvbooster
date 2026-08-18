@@ -87,8 +87,8 @@ When the user requests a durable behavior change, record it here or in the relev
 
 - `backend/AGENTS.md` — FastAPI backend, APIs, services, models, CV templates
 - `backend/src/AGENTS.md` — Backend source modules: config, database, routers, services, utils
+- `backend/tests/` — Backend pytest suite (run via Docker, see Verification in backend/AGENTS.md)
 - `frontend/AGENTS.md` — Next.js frontend, pages, components, store, API client
-- `frontend/src/AGENTS.md` — Frontend source: app routes, lib, hooks, store, middleware
+- `frontend/src/AGENTS.md` — Frontend source: app routes, lib, hooks, store
 - `nginx/AGENTS.md` — Reverse proxy and frontend routing configuration
 - `docker-compose.yml` — Local deployment services and environment wiring
-- `docker-db/AGENTS.md` — Database setup and migration SQL

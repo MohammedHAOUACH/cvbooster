@@ -3,7 +3,6 @@ PDF generation service using WeasyPrint + Jinja2.
 Converts optimized CV data (JSON Resume format) into styled PDFs.
 """
 import os
-import shutil
 import tempfile
 from typing import Any, Dict, List, Optional
 
@@ -35,19 +34,24 @@ def generate_cv_pdf(
     template_name: str = "clean",
     output_language: Optional[str] = "en",
     original_cv_style: Optional[str] = None,
+    output_path: Optional[str] = None,
 ) -> str:
     """
     Generate a PDF from CV data using a named template.
 
     Args:
-        cv_data: CV data in JSON Resume format.
+        cv_data: CV data in JSON Resume format
         template_name: Template name (clean, modern, minimal, etc.)
         output_language: Target output language for section labels.
         original_cv_style: Detected original CV style/format.
+        output_path: Where to write the PDF. Required in production callers;
+            when omitted a temp file is used (testing only) and the caller
+            must clean it up.
 
     Returns:
         Path to the generated PDF file.
     """
+
     from jinja2 import Environment, FileSystemLoader
     from weasyprint import HTML
 
@@ -65,28 +69,32 @@ def generate_cv_pdf(
         # Fallback to clean template
         template = env.get_template("clean.html")
 
-    labels = _get_section_labels(output_language)
-    section_order = _detect_section_order(labels, cv_data)
+    # Strip empty fields from basics (on a copy, to avoid mutating caller data)
+    cv = dict(cv_data)
+    if isinstance(cv.get("basics"), dict):
+        cv["basics"] = {
+            key: value
+            for key, value in cv["basics"].items()
+            if value not in (None, "", {}, [])
+        }
 
-    # Strip empty fields from basics to avoid rendering {'label': '', 'url': '', ...}
-    if "basics" in cv_data and isinstance(cv_data["basics"], dict):
-        for key in list(cv_data["basics"]):
-            if cv_data["basics"][key] in (None, "", {}, []):
-                del cv_data["basics"][key]
+    labels = _get_section_labels(output_language)
+    section_order = _detect_section_order(labels, cv)
 
     # Render HTML
     html_content = template.render(
-        cv=cv_data,
+        cv=cv,
         section_labels=labels,
         section_order=section_order,
         original_cv_style=original_cv_style or template_name,
         lang=output_language or "en",
     )
 
-    # Generate PDF with WeasyPrint
-    pdf_path = tempfile.NamedTemporaryFile(
-        suffix=".pdf", delete=False
-    ).name
+    # Generate PDF with WeasyPrint (write directly to the destination)
+    if output_path:
+        pdf_path = output_path
+    else:
+        pdf_path = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False).name
 
     HTML(string=html_content, base_url=STATIC_DIR).write_pdf(pdf_path)
 

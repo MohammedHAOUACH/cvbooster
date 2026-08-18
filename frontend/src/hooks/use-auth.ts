@@ -13,13 +13,11 @@ interface User {
 }
 
 const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
-const AUTH_PROVIDER = process.env.NEXT_PUBLIC_AUTH_PROVIDER || "google";
 
 export function useAuth() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (SKIP_AUTH) {
@@ -51,43 +49,16 @@ export function useAuth() {
     checkSession();
   }, []);
 
-  const signIn = useCallback(
-    (provider: "google" | "facebook" = AUTH_PROVIDER as any) => {
-      window.location.href = `/api/auth/${provider}`;
-    },
-    []
-  );
+  const signIn = useCallback(() => {
+    // Browser redirect to the backend Google OAuth endpoint
+    window.location.href = `/api/auth/google`;
+  }, []);
 
   const signOut = useCallback(async () => {
-    if (!SKIP_AUTH) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-        });
-      } catch (err) {
-        console.error("Sign out error:", err);
-      }
-      removeToken();
-    }
+    removeToken();
     setUser(null);
     router.push("/login");
   }, [router]);
 
-  return { user, loading, error, signIn, signOut };
-}
-
-export function useAuthToken(): string | null {
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (SKIP_AUTH) {
-      setToken("demo-token");
-      return;
-    }
-
-    const t = getToken();
-    setToken(t);
-  }, []);
-
-  return token;
+  return { user, loading, signIn, signOut };
 }

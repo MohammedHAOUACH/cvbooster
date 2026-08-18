@@ -8,11 +8,11 @@ ATS-optimized CV generator. Upload your resume, add a job posting, and get a tai
 |-----------|-----------|
 | Frontend | Next.js 15 + React 19 + Tailwind CSS |
 | Backend | FastAPI (Python 3.12) |
-| Database | SQLite (local) or Supabase (cloud) |
-| Auth | Google OAuth (local) or Supabase Auth (cloud) |
+| Database | SQLite (SQLAlchemy) |
+| Auth | Google OAuth + signed JWT (or `SKIP_AUTH` for dev) |
 | PDF Parsing | LiteParse |
 | Web Scraping | crawl4ai |
-| LLM | OpenRouter (tencent/hy3:free) or local llama.cpp |
+| LLM | LiteLLM: OpenRouter or local OpenAI-compatible server (llama.cpp/vLLM) |
 | PDF Generation | WeasyPrint + Jinja2 |
 | Deployment | Docker Compose |
 

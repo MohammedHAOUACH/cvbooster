@@ -55,11 +55,6 @@ export default function RootLayout({
         <footer className="bg-white border-t border-border px-6 py-8">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
             <span>CVBooster &copy; {new Date().getFullYear()} — ATS-Optimized Resume Generator</span>
-            <div className="flex items-center gap-6">
-              <a href="/privacy" className="text-muted hover:text-foreground transition-colors">Privacy</a>
-              <a href="/terms" className="text-muted hover:text-foreground transition-colors">Terms</a>
-              <a href="/contact" className="text-muted hover:text-foreground transition-colors">Contact</a>
-            </div>
           </div>
         </footer>
       </body>

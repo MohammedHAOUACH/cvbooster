@@ -20,7 +20,9 @@ Routes:
 - Single config file: `nginx/nginx.conf`
 - Listens on port 80
 - Routes are mounted by Docker Compose via volume bind
-- API routes use relative `/api` prefix
+- Upstreams use Docker Compose **service names** (`api`, `frontend`) — not
+  hardcoded container names
+- API routes use relative `/api` prefix; long LLM timeouts on `/api/`
 - Frontend is served as static/Node application behind proxy
 
 ## Work Guidance

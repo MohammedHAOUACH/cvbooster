@@ -116,6 +116,56 @@ class SQLiteStorage:
         finally:
             db.close()
     
+    def list_generated_cvs_by_original_cv(self, original_cv_id: str) -> List[Dict[str, Any]]:
+        """List generated CVs produced from a given original CV."""
+        db = self._get_db()
+        try:
+            cvs = (
+                db.query(GeneratedCV)
+                .filter(GeneratedCV.original_cv_id == original_cv_id)
+                .all()
+            )
+            return [self._generated_cv_to_dict(cv) for cv in cvs]
+        finally:
+            db.close()
+
+    def delete_original_cv(self, cv_id: str) -> Optional[Dict[str, Any]]:
+        """Delete an original CV and cascade-delete its generated CVs.
+
+        Returns the deleted original CV dict, or None if not found.
+        Callers are responsible for removing PDF files from disk.
+        """
+        db = self._get_db()
+        try:
+            cv = db.query(OriginalCV).filter(OriginalCV.id == cv_id).first()
+            if not cv:
+                return None
+
+            deleted_generated = (
+                db.query(GeneratedCV)
+                .filter(GeneratedCV.original_cv_id == cv_id)
+                .all()
+            )
+            result = self._original_cv_to_dict(cv)
+            generated_results = [self._generated_cv_to_dict(g) for g in deleted_generated]
+            for g in deleted_generated:
+                db.delete(g)
+            db.delete(cv)
+            db.commit()
+            result["deleted_generated_cvs"] = generated_results
+            return result
+        finally:
+            db.close()
+
+    def find_original_cv_by_file_name(self, file_name: str) -> Optional[Dict[str, Any]]:
+        """Find an original CV record by the stored file name (basename of file_url)."""
+        db = self._get_db()
+        try:
+            cv = db.query(OriginalCV).filter(OriginalCV.file_url.endswith(f"/{file_name}")).first()
+            return self._original_cv_to_dict(cv) if cv else None
+        finally:
+            db.close()
+
     def _original_cv_to_dict(self, cv: OriginalCV) -> Dict[str, Any]:
         return {
             "id": cv.id,
@@ -168,6 +218,43 @@ class SQLiteStorage:
         finally:
             db.close()
     
+    def delete_job_posting(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Delete a job posting and cascade-delete its generated CVs.
+
+        Returns the deleted job dict, or None if not found.
+        Callers are responsible for removing generated PDF files from disk.
+        """
+        db = self._get_db()
+        try:
+            job = db.query(JobPosting).filter(JobPosting.id == job_id).first()
+            if not job:
+                return None
+
+            deleted_generated = (
+                db.query(GeneratedCV)
+                .filter(GeneratedCV.job_posting_id == job_id)
+                .all()
+            )
+            result = self._job_posting_to_dict(job)
+            generated_results = [self._generated_cv_to_dict(g) for g in deleted_generated]
+            for g in deleted_generated:
+                db.delete(g)
+            db.delete(job)
+            db.commit()
+            result["deleted_generated_cvs"] = generated_results
+            return result
+        finally:
+            db.close()
+
+    def find_generated_cv_by_file_name(self, file_name: str) -> Optional[Dict[str, Any]]:
+        """Find a generated CV record by the stored file name (basename of file_url)."""
+        db = self._get_db()
+        try:
+            cv = db.query(GeneratedCV).filter(GeneratedCV.file_url.endswith(f"/{file_name}")).first()
+            return self._generated_cv_to_dict(cv) if cv else None
+        finally:
+            db.close()
+
     def _job_posting_to_dict(self, job: JobPosting) -> Dict[str, Any]:
         return {
             "id": job.id,
@@ -225,6 +312,20 @@ class SQLiteStorage:
         finally:
             db.close()
     
+    def delete_generated_cv(self, cv_id: str) -> Optional[Dict[str, Any]]:
+        """Delete a generated CV record. Returns the deleted dict or None."""
+        db = self._get_db()
+        try:
+            cv = db.query(GeneratedCV).filter(GeneratedCV.id == cv_id).first()
+            if not cv:
+                return None
+            result = self._generated_cv_to_dict(cv)
+            db.delete(cv)
+            db.commit()
+            return result
+        finally:
+            db.close()
+
     def update_generated_cv(self, cv_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update generated CV record."""
         db = self._get_db()

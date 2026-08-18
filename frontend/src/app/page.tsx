@@ -68,38 +68,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-surface border-y border-border">
-        <div className="max-w-6xl mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-3xl lg:text-4xl font-heading font-bold text-primary mb-1">
-                70K+
-              </div>
-              <div className="text-sm text-muted">Resumes Optimized</div>
-            </div>
-            <div>
-              <div className="text-3xl lg:text-4xl font-heading font-bold text-primary mb-1">
-                95%
-              </div>
-              <div className="text-sm text-muted">Avg. ATS Score</div>
-            </div>
-            <div>
-              <div className="text-3xl lg:text-4xl font-heading font-bold text-primary mb-1">
-                8
-              </div>
-              <div className="text-sm text-muted">Professional Templates</div>
-            </div>
-            <div>
-              <div className="text-3xl lg:text-4xl font-heading font-bold text-primary mb-1">
-                &lt;30s
-              </div>
-              <div className="text-sm text-muted">Generation Time</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* How It Works */}
       <section id="how-it-works" className="py-24 lg:py-32">
         <div className="max-w-6xl mx-auto px-6">
@@ -224,71 +192,6 @@ export default function HomePage() {
                   {feature.title}
                 </h3>
                 <p className="text-muted leading-relaxed">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials / Social Proof */}
-      <section className="py-24 lg:py-32">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="text-sm font-medium text-primary uppercase tracking-wider">
-              Trusted by Job Seekers
-            </span>
-            <h2 className="text-3xl lg:text-4xl font-heading font-bold text-foreground mt-3 mb-4">
-              What Our Users Say
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                quote:
-                  "I went from 2 interviews per month to 8 after using CVBooster. The ATS optimization is incredible.",
-                name: "Sarah M.",
-                role: "Software Engineer",
-              },
-              {
-                quote:
-                  "The AI actually understood what skills to highlight for my target role. Saved me hours of manual editing.",
-                name: "James K.",
-                role: "Product Manager",
-              },
-              {
-                quote:
-                  "Finally a tool that doesn't just reformat — it genuinely improves how ATS systems read your resume.",
-                name: "Priya R.",
-                role: "Data Analyst",
-              },
-            ].map((testimonial, i) => (
-              <div key={i} className="card p-6">
-                <div className="flex items-center gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <svg
-                      key={star}
-                      className="w-4 h-4 text-amber-400 fill-current"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.51.91-5.33L2.27 6.69l5.34-.78L10 1z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-foreground leading-relaxed mb-6 italic">
-                  "{testimonial.quote}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 text-primary flex items-center justify-center font-semibold text-sm">
-                    {testimonial.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-medium text-foreground text-sm">
-                      {testimonial.name}
-                    </div>
-                    <div className="text-muted text-xs">{testimonial.role}</div>
-                  </div>
-                </div>
               </div>
             ))}
           </div>

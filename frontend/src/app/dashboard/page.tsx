@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, endpoints } from "@/lib/api-client";
+import { api, endpoints, fetchAuthedBlob, downloadBlob } from "@/lib/api-client";
 import { useCVStore } from "@/store/cv-store";
 import type { GeneratedCV, OriginalCV } from "@/store/cv-store";
-import { FileText, FolderOpen, Star, Plus, ExternalLink, Download, Eye, FileUp, Target, Zap } from "lucide-react";
+import { FileText, FolderOpen, Star, Plus, Eye, Download, Trash2, FileUp, Target, Zap } from "lucide-react";
 
 export default function DashboardPage() {
   const setAllGeneratedCVs = useCVStore((s) => s.setAllGeneratedCVs);
@@ -13,32 +13,70 @@ export default function DashboardPage() {
   const [originalCVs, setOriginalCVs] = useState<OriginalCV[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const [genRes, origRes] = await Promise.all([
+        api.get(endpoints.cv.list),
+        api.get(endpoints.upload.cvs),
+      ]);
+
+      const generated = genRes.data.generated_cvs || genRes.data.data || [];
+      const originals = origRes.data.cvs || origRes.data.data || [];
+
+      setGeneratedCVs(generated);
+      setOriginalCVs(originals);
+      setAllGeneratedCVs(generated);
+      setAllOriginalCVs(originals);
+      setError(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load data";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-      setLoading(true);
-        const [genRes, origRes] = await Promise.all([
-        api.get(endpoints.cv.list),
-          api.get(endpoints.upload.cvs),
-        ]);
-
-        const generated = genRes.data.generated_cvs || genRes.data.data || [];
-        const originals = origRes.data.cvs || origRes.data.data || [];
-
-        setGeneratedCVs(generated);
-        setOriginalCVs(originals);
-        setAllGeneratedCVs(generated);
-        setAllOriginalCVs(originals);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to load data";
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
+    load();
   }, [setAllGeneratedCVs, setAllOriginalCVs]);
+
+  const handleDownload = async (cv: GeneratedCV) => {
+    try {
+      const blob = await fetchAuthedBlob(cv.file_url);
+      downloadBlob(blob, `cv-${cv.id}.pdf`);
+    } catch {
+      setError("Download failed");
+    }
+  };
+
+  const handleDeleteGenerated = async (cv: GeneratedCV) => {
+    if (!confirm(`Delete this generated CV? This cannot be undone.`)) return;
+    setBusyId(cv.id);
+    try {
+      await api.delete(endpoints.cv.delete(cv.id));
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDeleteOriginal = async (cv: OriginalCV) => {
+    if (!confirm("Delete this original CV and the CVs generated from it? This cannot be undone.")) return;
+    setBusyId(cv.id);
+    try {
+      await api.delete(endpoints.upload.delete(cv.id));
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -60,7 +98,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
+  if (error && generatedCVs.length === 0 && originalCVs.length === 0) {
     return (
       <div className="card p-8 text-center">
         <p className="text-red-600 mb-4">{error}</p>
@@ -77,6 +115,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm">{error}</div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-5">
@@ -104,7 +146,9 @@ export default function DashboardPage() {
             </div>
             <span className="text-sm font-medium text-muted">Avg ATS Score</span>
           </div>
-          <div className="text-2xl font-heading font-bold text-foreground">{avgScore}%</div>
+          <div className="text-2xl font-heading font-bold text-foreground">
+            {generatedCVs.length > 0 ? `${avgScore}%` : "—"}
+          </div>
         </div>
       </div>
 
@@ -113,21 +157,21 @@ export default function DashboardPage() {
         <h2 className="text-lg font-heading font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
-            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200">
               <FileUp className="w-5 h-5" />
             </div>
             <div className="font-medium text-foreground">Upload Your CV</div>
             <div className="text-sm text-muted mt-1">Upload your existing PDF resume</div>
           </a>
           <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
-            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200">
               <Target className="w-5 h-5" />
             </div>
             <div className="font-medium text-foreground">Add Job Posting</div>
             <div className="text-sm text-muted mt-1">Paste a URL or job description</div>
           </a>
           <a href="/create" className="group flex flex-col items-center text-center p-5 border border-border rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200">
-            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200">
               <Zap className="w-5 h-5" />
             </div>
             <div className="font-medium text-foreground">Generate CV</div>
@@ -159,7 +203,7 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {generatedCVs.slice(0, 5).map((cv) => {
-              const score = cv.ats_score ? Math.round(cv.ats_score) : null;
+              const score = cv.ats_score != null ? Math.round(cv.ats_score) : null;
               const scoreColor = score !== null
                 ? score >= 80 ? "text-success" : score >= 60 ? "text-amber-500" : "text-red-500"
                 : "text-muted";
@@ -183,29 +227,59 @@ export default function DashboardPage() {
                       className="btn btn-ghost text-xs flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      Details
+                      Preview
                     </a>
-                    <a
-                      href={cv.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => handleDownload(cv)}
                       className="btn btn-outline text-xs flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      View
-                    </a>
-                    <a
-                      href={cv.file_url}
-                      download={`cv-${cv.id}.pdf`}
-                      className="btn btn-primary text-xs flex items-center gap-1"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Download
-                    </a>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGenerated(cv)}
+                      disabled={busyId === cv.id}
+                      className="btn btn-outline text-xs flex items-center gap-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Original CVs */}
+      <div className="card p-6">
+        <h2 className="text-lg font-heading font-semibold text-foreground mb-4">Original CVs</h2>
+        {originalCVs.length === 0 ? (
+          <p className="text-sm text-muted py-6 text-center">No original CVs uploaded yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {originalCVs.map((cv) => (
+              <div key={cv.id} className="flex items-center justify-between gap-3 p-4 border border-border rounded-lg">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground truncate">{cv.file_name || "CV"}</div>
+                  <div className="text-sm text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>{new Date(cv.created_at).toLocaleDateString()}</span>
+                    {cv.detected_style && <span>Style: {cv.detected_style}</span>}
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleDeleteOriginal(cv)}
+                    disabled={busyId === cv.id}
+                    className="btn btn-outline text-xs flex items-center gap-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

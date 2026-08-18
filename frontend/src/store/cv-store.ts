@@ -13,6 +13,7 @@ export interface OriginalCV {
   file_name: string;
   file_size: number;
   extracted_data: Record<string, unknown>;
+  detected_style?: string;
   created_at: string;
 }
 

@@ -18,7 +18,7 @@ def extract_keywords_from_job(job_posting_data: Dict[str, Any]) -> Dict[str, lis
     """
     raw = job_posting_data.get("raw_content", "").lower()
 
-    # Common tech/programming keywords
+    # Common tech/programming keywords (language-neutral)
     tech_keywords = [
         "python", "javascript", "typescript", "java", "c++", "c#", "ruby", "go",
         "react", "angular", "vue", "node.js", "django", "flask", "fastapi",
@@ -30,22 +30,34 @@ def extract_keywords_from_job(job_posting_data: Dict[str, Any]) -> Dict[str, lis
         "api", "rest", "graphql", "microservices",
     ]
 
-    # Common soft skills
+    # Common soft skills (English and French)
     soft_skills = [
         "leadership", "communication", "teamwork", "problem solving",
         "critical thinking", "creativity", "adaptability", "time management",
         "collaboration", "mentoring", "stakeholder management",
         "project management", "strategic thinking", "negotiation",
+        "travail en equipe", "travail d'equipe", "resolution de problemes",
+        "resolution de problèmes", "esprit d'analyse", "gestion de projet",
+        "autonomie", "rigueur", "organisation",
+    ]
+
+    # Data/AI keywords frequently found in job postings (English and French)
+    data_keywords = [
+        "mlops", "etl", "elt", "pipelines", "pipeline de données", "pipelines de données",
+        "big data", "data engineering", "data scientist", "llm", "rag",
+        "langchain", "forecasting", "séries temporelles",
+        "bases de données", "base de données",
     ]
 
     # Find matches
     found_hard = [k for k in tech_keywords if k in raw]
     found_soft = [k for k in soft_skills if k in raw]
+    found_data = [k for k in data_keywords if k in raw]
 
     return {
         "hard_skills": found_hard,
         "soft_skills": found_soft,
-        "tools": [],
+        "tools": found_data,
         "certifications": [],
     }
 
@@ -74,7 +86,7 @@ def calculate_ats_score(
     total_keywords = len(all_job_keywords)
     if total_keywords == 0:
         return {
-            "score": 50.0,
+            "score": 0.0,
             "keywords_matched": 0,
             "keywords_total": 0,
             "breakdown": {},
@@ -91,11 +103,9 @@ def calculate_ats_score(
             matched += 1
             matched_details.append(keyword)
 
-    # Calculate score components
-    keyword_match_rate = (matched / total_keywords) * 100
-
-    # Final score (weighted)
-    score = min(100, keyword_match_rate * 1.2)  # Scale up slightly
+    # Final score: straight keyword coverage percentage (no artificial scaling)
+    score = min(100.0, round((matched / total_keywords) * 100, 1))
+    keyword_match_rate = score
 
     return {
         "score": round(score, 1),

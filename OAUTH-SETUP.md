@@ -1,117 +1,65 @@
 # OAuth Configuration Guide for CVBooster
 
-Supabase project: https://siekxlkhsppcqwyoxrvn.supabase.co
+CVBooster uses **direct Google OAuth** (authorization code flow) against the FastAPI
+backend. No Supabase is involved.
 
-## Step 1: Sign in to Supabase Dashboard
-Go to: https://supabase.com/dashboard/project/siekxlkhsppcqwyoxrvn/auth/providers
+## How the flow works
 
-## Step 2: Configure Google OAuth
+1. Frontend redirects the browser to `GET /api/auth/google`
+2. Backend redirects to Google with a one-time `state` token
+3. Google redirects back to `GOOGLE_REDIRECT_URI` with `code` + `state`
+4. Backend validates the state, exchanges the code, creates/updates the profile,
+   and generates a signed JWT
+5. Backend redirects to `/login?token=<jwt>`; the login page stores the token
+   (localStorage) and redirects to the dashboard
+6. All API calls send `Authorization: Bearer <jwt>`
 
-### 2a. Create Google OAuth Credentials
+## Step 1 — Create Google OAuth credentials
+
 1. Go to https://console.cloud.google.com/
-2. Create a new project (or select existing)
-3. Go to **APIs & Services > Credentials**
-4. Click **Create Credentials > OAuth client ID**
-5. Application type: **Web application**
-6. Authorized JavaScript origins:
-   ```
-   http://localhost:3000
-   http://localhost:80
-   ```
-7. Authorized redirect URIs:
-   ```
-   https://siekxlkhsppcqwyoxrvn.supabase.co/auth/v1/callback
-   ```
-8. Click **Create**
-9. Copy the **Client ID** and **Client Secret**
+2. Create a project (or select an existing one)
+3. **APIs & Services > OAuth consent screen**: configure your app (External, add
+   the `email` and `profile` scopes)
+4. **APIs & Services > Credentials > Create credentials > OAuth client ID**
+   - Application type: **Web application**
+   - Authorized JavaScript origins:
+     ```
+     http://localhost
+     http://your-vps-ip
+     https://your-domain
+     ```
+   - Authorized redirect URIs (must exactly match `GOOGLE_REDIRECT_URI`):
+     ```
+     http://localhost/api/auth/google/callback
+     http://your-vps-ip/api/auth/google/callback
+     https://your-domain/api/auth/google/callback
+     ```
+5. Copy the **Client ID** and **Client Secret**
 
-### 2b. Configure in Supabase
-1. In Supabase dashboard → **Authentication > Providers**
-2. Find **Google** and click **Enable**
-3. Paste:
-   - **Client ID**: from Google Cloud Console
-   - **Client Secret**: from Google Cloud Console
-4. Save
-
-## Step 3: Configure Facebook OAuth
-
-### 3a. Create Facebook App
-1. Go to https://developers.facebook.com/
-2. Click **Create App**
-3. Purpose: **Other** → Create App
-4. Go to **Settings > Basic**
-5. Copy **App ID** (this is the Client ID)
-6. Copy **App Secret** (this is the Client Secret)
-7. Add **Platform**: **Website**
-8. Site URL: `http://localhost:3000`
-
-### 3b. Add Facebook Login
-1. Go to **Add Feature > Facebook Login**
-2. Add **Client OAuth Login** method
-3. Add Valid OAuth redirect URIs:
-   ```
-   https://siekxlkhsppcqwyoxrvn.supabase.co/auth/v1/callback
-   ```
-
-### 3c. Configure in Supabase
-1. In Supabase → **Authentication > Providers**
-2. Find **Facebook** and click **Enable**
-3. Paste:
-   - **Client ID**: the App ID from Facebook
-   - **Client Secret**: the App Secret from Facebook
-4. Save
-
-## Step 4: Configure TikTok OAuth (Custom Provider)
-
-### 4a. Create TikTok Developer App
-1. Go to https://developers.tiktok.com/
-2. Create account + new app
-3. Product: **Login Kit**
-4. Website URL: `http://localhost:3000`
-5. Redirect URI: `https://siekxlkhsppcqwyoxrvn.supabase.co/auth/v1/callback`
-6. Scope: `user.basic.profile`
-7. Copy **API Key** and **API Secret**
-
-### 4b. Configure in Supabase
-1. In Supabase → **Authentication > Providers**
-2. Scroll to **Custom OAuth/OIDC Providers**
-3. Click **Add Custom Provider**
-4. Fill in:
-   - **Name**: `tiktok`
-   - **Client ID**: TikTok API Key
-   - **Client Secret**: TikTok API Secret
-   - **Authorize URL**: `https://www.tiktok.com/v2/auth/authorize/`
-   - **Token URL**: `https://open.tiktokapis.com/v2/oauth/token/`
-   - **User Info URL**: `https://open.tiktokapis.com/v2/user/info/`
-   - **Redirect URL**: `https://siekxlkhsppcqwyoxrvn.supabase.co/auth/v1/callback`
-   - **Scope**: `user.basic.profile`
-5. Save
-
-## Step 5: Configure OpenRouter API Key
-
-Edit the `.env` file in the project root:
+## Step 2 — Configure `.env`
 
 ```bash
-OPENROUTER_API_KEY=sk-or-your-key-here
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxx
+GOOGLE_REDIRECT_URI=http://your-vps-ip/api/auth/google/callback
+
+# Generate a real secret for production:
+# python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET=change-me
+SKIP_AUTH=false
 ```
 
-Use the model: `nvidia/nemotron-3-ultra-550b-a55b:free`
-(already configured in the backend LLM service)
+Then rebuild the frontend image (auth flags are baked at build time):
 
-## Step 6: Update Redirect URLs in Frontend
+```bash
+docker compose up -d --build
+```
 
-The frontend redirects to: `http://localhost:3000/auth/callback`
+## Notes
 
-Make sure this URL is added to:
-- Google Cloud Console → Authorized redirect URIs
-- Facebook Developer → Valid OAuth redirect URIs
-- TikTok Developer → Redirect URIs
-
-## Step 7: Test
-
-After configuration:
-1. Start the app: `docker compose up`
-2. Go to http://localhost/login
-3. Click "Continue with Google" or "Continue with Facebook"
-4. You should be redirected to the provider, then back to your app
-5. You should land on the dashboard
+- `SKIP_AUTH=true` disables authentication entirely (development only). When it is
+  false, the frontend is built without the skip-auth flag and users must sign in.
+- The JWT is signed with `JWT_SECRET` (HS256) and expires after 24 h. Tokens are
+  never accepted unless they are correctly signed — unsigned/forged tokens are
+  rejected.
+- Facebook/TikTok sign-in are not implemented; the login screen only offers Google.

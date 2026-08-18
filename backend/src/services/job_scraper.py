@@ -15,9 +15,10 @@ async def scrape_job_url(url: str) -> Dict[str, Any]:
     Returns:
         Dict with title, company, raw_content, parsed_data.
     """
-    from crawl4ai import AsyncWebCrawler
+    from crawl4ai import AsyncWebCrawler, BrowserConfig
 
-    async with AsyncWebCrawler() as crawler:
+    config = BrowserConfig(headless=True, page_timeout=60000)
+    async with AsyncWebCrawler(config=config) as crawler:
         result = await crawler.arun(url=url)
 
         if not result.success:
@@ -73,7 +74,6 @@ def _extract_company(content: str) -> str:
 
     patterns = [
         r'(?:Company|Employer|Organization)[:\s]+(.{3,80})',
-        r'at\s+([\w\s&.,]+?)(?:\s|$)',
     ]
 
     for pattern in patterns:

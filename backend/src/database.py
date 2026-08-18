@@ -2,15 +2,15 @@
 SQLite database setup for CVBooster.
 Uses SQLAlchemy for ORM with SQLite backend.
 """
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Float, JSON, BigInteger
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Float, JSON, BigInteger, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.sql import func
 import os
-import sqlite3
+from datetime import datetime, timezone
 
-# Database path from environment or default
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "/app/data/cvbooster.db")
+# Database path: env override, else <repo>/backend/data/cvbooster.db (works locally and in Docker)
+_DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "cvbooster.db")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", os.path.normpath(_DEFAULT_DB_PATH))
 
 # Ensure directory exists
 os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
@@ -37,8 +37,8 @@ class Profile(Base):
     avatar_url = Column(String(500), default="")
     provider = Column(String(50), default="google")
     email = Column(String(255), unique=True, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class OriginalCV(Base):
@@ -51,7 +51,7 @@ class OriginalCV(Base):
     file_size = Column(BigInteger)
     extracted_data = Column(JSON, default=dict)
     detected_style = Column(String(50), default="clean")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class JobPosting(Base):
@@ -65,7 +65,7 @@ class JobPosting(Base):
     raw_content = Column(Text)
     detected_language = Column(String(10), default="en")
     parsed_data = Column(JSON, default=dict)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class GeneratedCV(Base):
@@ -81,10 +81,10 @@ class GeneratedCV(Base):
     file_url = Column(String(500), nullable=False)
     llm_output = Column(JSON, default=dict)
     ats_score = Column(Float)
-    keywords_matched = Column(String(10))
-    keywords_total = Column(String(10))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    keywords_matched = Column(Integer)
+    keywords_total = Column(Integer)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 def init_db():

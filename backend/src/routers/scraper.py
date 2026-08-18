@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from ..services.sqlite_storage import storage
 from ..utils.auth import get_current_user_id
+from ..utils.validators import is_safe_url_for_scraping
 from ..services.job_scraper import scrape_job_url
 from ..models.job import ScrapeJobRequest, PasteJobRequest
 
@@ -11,7 +12,13 @@ try:
 except ImportError:
     LANGDETECT_AVAILABLE = False
 
+import os
+
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+# Uploads directory - use environment variable or default
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/app/uploads")
+GENERATED_CVS_DIR = os.path.join(UPLOADS_DIR, "generated-cvs")
 
 
 @router.post("/scrape")
@@ -20,25 +27,34 @@ async def scrape_job(
     user_id: str = Depends(get_current_user_id)
 ):
     """Scrape a job posting URL using crawl4ai."""
+    # SSRF guard: only public http(s) URLs, never internal addresses
+    if not is_safe_url_for_scraping(request.source_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or unsafe URL. Only public http(s) job posting links are allowed.",
+        )
+
     try:
         scraped_data = await scrape_job_url(request.source_url)
     except Exception as e:
         error_msg = str(e)
+        print(f"[Scraper] Failed to scrape {request.source_url}: {error_msg}")
         # Check for common anti-bot protection errors
         if "Cloudflare" in error_msg or "anti-bot" in error_msg.lower() or "blocked" in error_msg.lower():
             raise HTTPException(
                 status_code=403,
                 detail="This website is protected by Cloudflare or similar anti-bot protection. Please use 'Paste Text' mode instead to copy and paste the job description manually."
             )
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {error_msg}")
+        raise HTTPException(status_code=500, detail="Scraping failed. Please use 'Paste Text' mode instead.")
 
+    raw_content = scraped_data.get("raw_content", "") or ""
     job_data = {
         "user_id": user_id,
         "source_url": request.source_url,
         "title": scraped_data.get("title"),
         "company": scraped_data.get("company"),
-        "raw_content": scraped_data.get("raw_content", ""),
-        "detected_language": _detect_job_language(scraped_data.get("raw_content", "")),
+        "raw_content": raw_content,
+        "detected_language": _detect_job_language(raw_content),
         "parsed_data": scraped_data.get("parsed_data"),
     }
 
@@ -91,13 +107,24 @@ async def delete_job(
     job_id: str,
     user_id: str = Depends(get_current_user_id)
 ):
-    """Delete a job posting."""
+    """Delete a job posting and the CVs generated from it."""
     job = storage.get_job_posting(job_id)
 
     if not job or job.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Job posting not found")
 
-    # TODO: Add delete method to SQLiteStorage
+    deleted = storage.delete_job_posting(job_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+
+    # Remove generated PDF files (cascade)
+    for g in deleted.get("deleted_generated_cvs", []):
+        file_url = g.get("file_url")
+        if file_url:
+            path = os.path.join(GENERATED_CVS_DIR, os.path.basename(file_url))
+            if os.path.isfile(path):
+                os.remove(path)
+
     return {"message": "Job posting deleted successfully"}
 
 
