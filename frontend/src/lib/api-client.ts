@@ -34,12 +34,17 @@ api.interceptors.response.use(
 
 /**
  * Fetch a protected resource (e.g. a PDF) as a Blob.
- * Works for file URLs that require the Authorization header, which plain
- * <iframe>/<a> navigation cannot send.
+ * Uses native fetch (same-origin absolute path + Authorization header):
+ * plain <iframe>/<a> navigation cannot send the header, and axios would
+ * double-prefix the /api baseURL onto file URLs that already contain /api.
  */
 export async function fetchAuthedBlob(path: string): Promise<Blob> {
-  const res = await api.get<Blob>(path, { responseType: "blob" });
-  return res.data;
+  const token = getToken();
+  const res = await fetch(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+  return res.blob();
 }
 
 /** Trigger a browser download for an in-memory Blob. */

@@ -15,11 +15,11 @@ async def scrape_job_url(url: str) -> Dict[str, Any]:
     Returns:
         Dict with title, company, raw_content, parsed_data.
     """
-    from crawl4ai import AsyncWebCrawler, BrowserConfig
+    from crawl4ai import AsyncWebCrawler
 
-    config = BrowserConfig(headless=True, page_timeout=60000)
-    async with AsyncWebCrawler(config=config) as crawler:
-        result = await crawler.arun(url=url)
+    # page_timeout (ms) is a CrawlerRunConfig option in crawl4ai >= 0.5
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun(url=url, page_timeout=60000)
 
         if not result.success:
             raise RuntimeError(f"Failed to scrape {url}: {result.error_message}")
@@ -27,8 +27,14 @@ async def scrape_job_url(url: str) -> Dict[str, Any]:
         # Get cleaned markdown text
         raw_content = result.markdown or result.cleaned_html or ""
 
-        # Try to extract title and company from the content
-        title = _extract_title(raw_content)
+        # Prefer the real page title (og:title / <title>) from the metadata;
+        # on JS-heavy pages the text heuristics may pick a loading placeholder
+        meta = result.metadata or {}
+        meta_title = (meta.get("title") or "").strip()
+        if meta_title and len(meta_title) >= 3 and "chargement" not in meta_title.lower():
+            title = meta_title
+        else:
+            title = _extract_title(raw_content)
         company = _extract_company(raw_content)
 
         return {
